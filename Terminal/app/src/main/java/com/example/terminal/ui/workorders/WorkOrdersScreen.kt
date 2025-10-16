@@ -72,6 +72,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
@@ -528,7 +529,7 @@ private fun WorkOrderNumberHeading(
 
 @Composable
 private fun ClockInInfo(clockInTime: String?) {
-    val locale = Locale.US
+    val locale = Locale.getDefault()
     val clockInInstant = remember(clockInTime) { parseClockInInstant(clockInTime) }
     val formattedClockIn = remember(clockInInstant, clockInTime, locale) {
         clockInInstant?.let { formatClockInDisplay(it, locale) }
@@ -653,8 +654,9 @@ private fun formatClockInDisplay(
     locale: Locale
 ): String {
     val zonedDateTime = clockInInstant.atZone(ZoneId.systemDefault())
-    val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a", locale)
-    return formatter.format(zonedDateTime)
+    val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale)
+    val timeFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+    return "${dateFormatter.format(zonedDateTime)} • ${timeFormatter.format(zonedDateTime)}"
 }
 
 private fun formatElapsed(clockInInstant: Instant): String {
