@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -14,20 +15,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,6 +42,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.terminal.data.network.ClockOutStatus
 import com.example.terminal.ui.theme.TerminalKeypadBackground
 import com.example.terminal.ui.theme.TerminalKeypadButton
+import com.example.terminal.ui.theme.TerminalKeypadEnter
 
 @Composable
 fun ClockOutDialog(
@@ -70,11 +74,24 @@ fun ClockOutDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Text(
-                        text = "Clock OUT WO",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Clock OUT WO",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(onClick = onDismiss) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Cerrar",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedTextField(
@@ -99,24 +116,13 @@ fun ClockOutDialog(
 
                         StatusButtons(
                             selectedStatus = selectedStatus,
-                            onStatusSelected = { status -> selectedStatus = status }
+                            onStatusSelected = { status ->
+                                selectedStatus = status
+                                if (qty.isNotBlank()) {
+                                    onConfirm(qty, status)
+                                }
+                            }
                         )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = onDismiss) {
-                            Text(text = "Cancel")
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        TextButton(
-                            onClick = { onConfirm(qty, selectedStatus) },
-                            enabled = qty.isNotBlank()
-                        ) {
-                            Text(text = "Confirm")
-                        }
                     }
                 }
             }
@@ -160,9 +166,9 @@ private fun StatusButton(
     onClick: () -> Unit
 ) {
     val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+        TerminalKeypadEnter
     } else {
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
     }
     val contentColor = if (isSelected) {
         MaterialTheme.colorScheme.onPrimary
@@ -170,7 +176,7 @@ private fun StatusButton(
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     Button(
-        modifier = modifier,
+        modifier = modifier.height(72.dp),
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
@@ -183,12 +189,12 @@ private fun StatusButton(
         androidx.compose.material3.Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(28.dp)
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
         )
     }
 }
