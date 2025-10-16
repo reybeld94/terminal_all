@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 
 enum class WorkOrderInputField {
     EMPLOYEE,
-    WORK_ORDER
+    WORK_ORDER,
+    CLOCK_OUT_QTY
 }
 
 data class WorkOrdersUiState(
@@ -32,7 +33,9 @@ data class WorkOrdersUiState(
     val showClockOutDialog: Boolean = false,
     val isEmployeeValidated: Boolean = false,
     val employeeValidationError: String? = null,
-    val userStatus: UserStatus? = null
+    val userStatus: UserStatus? = null,
+    val clockOutQuantity: String = "",
+    val clockOutStatus: ClockOutStatus = ClockOutStatus.COMPLETE
 )
 
 private const val WORK_ORDER_TIMEOUT_MS = 20_000L
@@ -90,6 +93,10 @@ class WorkOrdersViewModel(
                 cancelWorkOrderTimeout()
                 updateWorkOrderId(_uiState.value.workOrderId + digit)
             }
+
+            WorkOrderInputField.CLOCK_OUT_QTY -> {
+                updateClockOutQuantity(_uiState.value.clockOutQuantity + digit)
+            }
         }
     }
 
@@ -103,6 +110,11 @@ class WorkOrdersViewModel(
             WorkOrderInputField.WORK_ORDER -> {
                 val updated = _uiState.value.workOrderId.dropLast(1)
                 updateWorkOrderId(updated)
+            }
+
+            WorkOrderInputField.CLOCK_OUT_QTY -> {
+                val updated = _uiState.value.clockOutQuantity.dropLast(1)
+                updateClockOutQuantity(updated)
             }
         }
     }
@@ -119,6 +131,10 @@ class WorkOrdersViewModel(
 
             WorkOrderInputField.WORK_ORDER -> {
                 _uiState.update { it.copy(activeField = WorkOrderInputField.EMPLOYEE) }
+            }
+
+            WorkOrderInputField.CLOCK_OUT_QTY -> {
+                onClockOutConfirm()
             }
         }
     }
@@ -155,7 +171,12 @@ class WorkOrdersViewModel(
             val result = repository.clockIn(workOrderId, userId)
             result.fold(
                 onSuccess = {
-                    showMessage("Clock In registrado correctamente")
+                    val refreshed = refreshUserStatus(employee)
+                    if (refreshed) {
+                        showMessage("Clock In registrado correctamente")
+                    } else {
+                        showMessage("Clock In registrado correctamente, pero no se pudo actualizar la información")
+                    }
                 },
                 onFailure = { error ->
                     showMessage(error.message ?: "Error al registrar Clock In")
@@ -190,16 +211,32 @@ class WorkOrdersViewModel(
             }
         }
         cancelWorkOrderTimeout()
-        _uiState.update { it.copy(showClockOutDialog = true) }
+        _uiState.update {
+            it.copy(
+                showClockOutDialog = true,
+                activeField = WorkOrderInputField.CLOCK_OUT_QTY,
+                clockOutQuantity = "",
+                clockOutStatus = ClockOutStatus.COMPLETE
+            )
+        }
     }
 
-    fun onClockOut(qty: String, status: ClockOutStatus) {
+    fun onClockOutQuantityChange(value: String) {
+        updateClockOutQuantity(value)
+    }
+
+    fun onClockOutStatusSelected(status: ClockOutStatus) {
+        _uiState.update { it.copy(clockOutStatus = status) }
+    }
+
+    fun onClockOutConfirm() {
         val state = _uiState.value
         val employee = state.employeeId.trim()
         val workOrder = state.workOrderId.trim()
         val activeWorkOrderId = state.userStatus?.activeWorkOrder?.workOrderCollectionId
 
-        val quantity = qty.toIntOrNull()
+        val quantityText = state.clockOutQuantity
+        val quantity = quantityText.toIntOrNull()
         if (quantity == null || quantity <= 0) {
             showMessage("Ingrese una cantidad válida mayor a 0")
             return
@@ -216,8 +253,16 @@ class WorkOrdersViewModel(
             return
         }
 
+        val status = state.clockOutStatus
         setLoading(true)
-        _uiState.update { it.copy(showClockOutDialog = false) }
+        _uiState.update {
+            it.copy(
+                showClockOutDialog = false,
+                clockOutQuantity = "",
+                clockOutStatus = ClockOutStatus.COMPLETE,
+                activeField = nextActiveFieldAfterClockOut(it)
+            )
+        }
         viewModelScope.launch {
             val result = repository.clockOut(
                 workOrderCollectionId = workOrderId,
@@ -231,7 +276,9 @@ class WorkOrdersViewModel(
                         current.copy(
                             userStatus = updatedStatus,
                             workOrderId = "",
-                            activeField = WorkOrderInputField.WORK_ORDER
+                            activeField = WorkOrderInputField.WORK_ORDER,
+                            clockOutQuantity = "",
+                            clockOutStatus = ClockOutStatus.COMPLETE
                         )
                     }
                     showMessage("Clock Out registrado correctamente")
@@ -246,7 +293,14 @@ class WorkOrdersViewModel(
     }
 
     fun dismissClockOutDialog() {
-        _uiState.update { it.copy(showClockOutDialog = false) }
+        _uiState.update {
+            it.copy(
+                showClockOutDialog = false,
+                clockOutQuantity = "",
+                clockOutStatus = ClockOutStatus.COMPLETE,
+                activeField = nextActiveFieldAfterClockOut(it)
+            )
+        }
         startWorkOrderTimeout()
     }
 
@@ -261,7 +315,11 @@ class WorkOrdersViewModel(
                 employeeId = value,
                 isEmployeeValidated = false,
                 employeeValidationError = null,
-                userStatus = null
+                userStatus = null,
+                showClockOutDialog = false,
+                clockOutQuantity = "",
+                clockOutStatus = ClockOutStatus.COMPLETE,
+                activeField = WorkOrderInputField.EMPLOYEE
             )
         }
         saveEmployeeJob?.cancel()
@@ -280,6 +338,16 @@ class WorkOrdersViewModel(
             }
         } else {
             cancelWorkOrderTimeout()
+        }
+    }
+
+    private fun updateClockOutQuantity(value: String) {
+        val filtered = value.filter(Char::isDigit)
+        _uiState.update {
+            it.copy(
+                clockOutQuantity = filtered,
+                activeField = WorkOrderInputField.CLOCK_OUT_QTY
+            )
         }
     }
 
@@ -331,6 +399,33 @@ class WorkOrdersViewModel(
         }
     }
 
+    private suspend fun refreshUserStatus(employee: String): Boolean {
+        val result = repository.fetchUserStatus(employee)
+        return result.fold(
+            onSuccess = { status ->
+                _uiState.update { current ->
+                    current.copy(
+                        isEmployeeValidated = true,
+                        employeeValidationError = null,
+                        userStatus = status,
+                        workOrderId = status.activeWorkOrder?.workOrderCollectionId?.toString()
+                            ?: current.workOrderId,
+                        activeField = if (status.activeWorkOrder == null) {
+                            WorkOrderInputField.WORK_ORDER
+                        } else {
+                            WorkOrderInputField.EMPLOYEE
+                        }
+                    )
+                }
+                startWorkOrderTimeout()
+                true
+            },
+            onFailure = {
+                false
+            }
+        )
+    }
+
     private fun startWorkOrderTimeout() {
         cancelWorkOrderTimeout()
         workOrderTimeoutJob = viewModelScope.launch {
@@ -368,8 +463,18 @@ class WorkOrdersViewModel(
                 isEmployeeValidated = false,
                 employeeValidationError = null,
                 userStatus = null,
-                activeField = WorkOrderInputField.EMPLOYEE
+                activeField = WorkOrderInputField.EMPLOYEE,
+                clockOutQuantity = "",
+                clockOutStatus = ClockOutStatus.COMPLETE
             )
+        }
+    }
+
+    private fun nextActiveFieldAfterClockOut(state: WorkOrdersUiState): WorkOrderInputField {
+        return if (state.userStatus?.activeWorkOrder != null) {
+            WorkOrderInputField.EMPLOYEE
+        } else {
+            WorkOrderInputField.WORK_ORDER
         }
     }
 

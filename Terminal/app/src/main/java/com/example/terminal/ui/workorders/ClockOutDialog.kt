@@ -11,11 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -23,13 +24,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -38,7 +34,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import com.example.terminal.data.network.ClockOutStatus
 import com.example.terminal.ui.theme.TerminalKeypadBackground
 import com.example.terminal.ui.theme.TerminalKeypadButton
@@ -46,84 +41,86 @@ import com.example.terminal.ui.theme.TerminalKeypadEnter
 
 @Composable
 fun ClockOutDialog(
+    modifier: Modifier = Modifier,
+    quantity: String,
+    selectedStatus: ClockOutStatus,
+    onQuantityChange: (String) -> Unit,
+    onStatusSelected: (ClockOutStatus) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (qty: String, status: ClockOutStatus) -> Unit
+    onConfirm: () -> Unit
 ) {
-    var qty by rememberSaveable { mutableStateOf("") }
-    var selectedStatus by rememberSaveable { mutableStateOf(ClockOutStatus.COMPLETE) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        val dialogShape = RoundedCornerShape(28.dp)
-        Surface(
-            modifier = Modifier,
-            shape = dialogShape,
-            tonalElevation = 12.dp,
-            shadowElevation = 12.dp,
-            color = Color.Transparent
+    val dialogShape = RoundedCornerShape(28.dp)
+    Box(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(vertical = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(TerminalKeypadButton, TerminalKeypadBackground)
+                    ),
+                    shape = dialogShape
+                )
+                .padding(horizontal = 28.dp, vertical = 24.dp)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(TerminalKeypadButton, TerminalKeypadBackground)
+                    .fillMaxWidth()
+                    .widthIn(max = 520.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Clock Out Work Order",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    IconButton(onClick = onDismiss) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedTextField(
+                        value = quantity,
+                        onValueChange = { input -> onQuantityChange(input.filter { it.isDigit() }) },
+                        label = { Text(text = "Quantity") },
+                        placeholder = { Text(text = "0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
                         )
                     )
-                    .padding(horizontal = 28.dp, vertical = 24.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Clock Out Work Order",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        IconButton(onClick = onDismiss) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Close",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        OutlinedTextField(
-                            value = qty,
-                            onValueChange = { input -> qty = input.filter { it.isDigit() } },
-                            label = { Text(text = "Quantity") },
-                            placeholder = { Text(text = "0") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                cursorColor = MaterialTheme.colorScheme.primary,
-                                focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                            )
-                        )
-
-                        StatusButtons(
-                            selectedStatus = selectedStatus,
-                            onStatusSelected = { status ->
-                                selectedStatus = status
-                                if (qty.isNotBlank()) {
-                                    onConfirm(qty, status)
-                                }
+                    StatusButtons(
+                        selectedStatus = selectedStatus,
+                        onStatusSelected = { status ->
+                            onStatusSelected(status)
+                            if (quantity.isNotBlank()) {
+                                onConfirm()
                             }
-                        )
-                    }
+                        }
+                    )
                 }
             }
         }
