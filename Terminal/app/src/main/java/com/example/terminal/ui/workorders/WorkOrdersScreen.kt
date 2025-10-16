@@ -140,8 +140,16 @@ fun WorkOrdersScreen(
 
             if (uiState.showClockOutDialog) {
                 ClockOutDialog(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.6f)
+                        .align(Alignment.CenterStart),
+                    quantity = uiState.clockOutQuantity,
+                    selectedStatus = uiState.clockOutStatus,
+                    onQuantityChange = viewModel::onClockOutQuantityChange,
+                    onStatusSelected = viewModel::onClockOutStatusSelected,
                     onDismiss = viewModel::dismissClockOutDialog,
-                    onConfirm = { qty, status -> viewModel.onClockOut(qty, status) }
+                    onConfirm = viewModel::onClockOutConfirm
                 )
             }
 
