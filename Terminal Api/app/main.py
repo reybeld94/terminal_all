@@ -35,15 +35,20 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         token = set_request_id(request_id)
         start_time = time.perf_counter()
 
+        original_receive = request._receive  # type: ignore[attr-defined]
         body_bytes = await request.body()
         body_sent = False
 
         async def receive() -> Message:  # type: ignore[override]
             nonlocal body_sent
-            if body_sent:
-                return {"type": "http.request", "body": b"", "more_body": False}
-            body_sent = True
-            return {"type": "http.request", "body": body_bytes, "more_body": False}
+            if not body_sent:
+                body_sent = True
+                return {
+                    "type": "http.request",
+                    "body": body_bytes,
+                    "more_body": False,
+                }
+            return await original_receive()
 
         request._receive = receive  # type: ignore[attr-defined]
 
