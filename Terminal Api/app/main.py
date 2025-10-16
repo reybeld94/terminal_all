@@ -48,7 +48,22 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
                     "body": body_bytes,
                     "more_body": False,
                 }
-            return await original_receive()
+
+            message = await original_receive()
+
+            # When the original receive callable is awaited after the request body
+            # has already been fully consumed, the ASGI server may still emit an
+            # ``http.request`` message with an empty body. Starlette expects a
+            # ``http.disconnect`` message at this stage (for example while the
+            # response is being streamed) and will raise a ``RuntimeError`` when it
+            # receives ``http.request`` instead. Converting the redundant
+            # ``http.request`` message to ``http.disconnect`` keeps the middleware in
+            # sync with Starlette's expectations without losing the real
+            # disconnect signal should it arrive later.
+            if message.get("type") == "http.request" and not message.get("more_body"):
+                return {"type": "http.disconnect"}
+
+            return message
 
         request._receive = receive  # type: ignore[attr-defined]
 
