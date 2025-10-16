@@ -69,6 +69,7 @@ import com.example.terminal.ui.theme.TerminalKeypadEnter
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -646,6 +647,11 @@ private fun parseClockInInstant(clockInTime: String?): Instant? {
 
     return runCatching { OffsetDateTime.parse(clockInTime).toInstant() }
         .recoverCatching { Instant.parse(clockInTime) }
+        .recoverCatching {
+            LocalDateTime.parse(clockInTime)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+        }
         .getOrNull()
 }
 
