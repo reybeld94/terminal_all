@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -27,6 +28,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -47,8 +49,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +66,13 @@ import com.example.terminal.ui.theme.TerminalKeypadBackground
 import com.example.terminal.ui.theme.TerminalKeypadButton
 import com.example.terminal.ui.theme.TerminalKeypadClear
 import com.example.terminal.ui.theme.TerminalKeypadEnter
+import kotlinx.coroutines.delay
+import java.time.Duration
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun WorkOrdersScreen(
@@ -430,7 +441,7 @@ private fun EmployeeStatusCard(
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -452,16 +463,25 @@ private fun EmployeeStatusCard(
 
                 val workOrder = status.activeWorkOrder
                 if (workOrder != null) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Active Work Order",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onTertiary
+                    Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        WorkOrderNumberHeading(
+                            workOrderNumber = workOrder.workOrderNumber,
+                            assemblyNumber = workOrder.workOrderAssemblyNumber
                         )
-                        WorkOrderDetailRow("Work Order #", workOrder.workOrderNumber)
-                        WorkOrderDetailRow("Clock In", workOrder.clockInTime)
-                        WorkOrderDetailRow("Part Number", workOrder.partNumber)
-                        WorkOrderDetailRow("Operation Name", workOrder.operationName)
+
+                        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+
+                        ClockInInfo(clockInTime = workOrder.clockInTime)
+
+                        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+
+                        WorkOrderDetailsGrid(
+                            partNumber = workOrder.partNumber,
+                            operationName = workOrder.operationName,
+                            operationCode = workOrder.operationCode
+                        )
                     }
                 } else {
                     Text(
@@ -476,24 +496,169 @@ private fun EmployeeStatusCard(
 }
 
 @Composable
-private fun WorkOrderDetailRow(label: String, value: String?) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+private fun WorkOrderNumberHeading(
+    workOrderNumber: String?,
+    assemblyNumber: String?
+) {
+    val displayNumber = remember(workOrderNumber, assemblyNumber) {
+        when {
+            !workOrderNumber.isNullOrBlank() -> workOrderNumber
+            !assemblyNumber.isNullOrBlank() -> assemblyNumber
+            else -> null
+        }
+    } ?: "--"
+
+    Text(
+        text = "Work Order # $displayNumber",
+        style = MaterialTheme.typography.headlineLarge.copy(
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
+        ),
+        color = MaterialTheme.colorScheme.onTertiary
+    )
+}
+
+@Composable
+private fun ClockInInfo(clockInTime: String?) {
+    val locale = Locale.getDefault()
+    val clockInInstant = remember(clockInTime) { parseClockInInstant(clockInTime) }
+    val formattedClockIn = remember(clockInInstant, clockInTime, locale) {
+        clockInInstant?.let { formatClockInDisplay(it, locale) }
+            ?: clockInTime?.takeIf { it.isNotBlank() }
+    }
+
+    var elapsed by remember(clockInInstant) {
+        mutableStateOf(clockInInstant?.let { formatElapsed(it) })
+    }
+
+    if (clockInInstant != null) {
+        LaunchedEffect(clockInInstant) {
+            while (true) {
+                elapsed = formatElapsed(clockInInstant)
+                delay(1_000L)
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+            text = "CLOCK IN",
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.8.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
         Text(
-            text = value?.takeIf { it.isNotBlank() } ?: "--",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.End
+            text = formattedClockIn ?: "--",
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        val elapsedDisplay = elapsed ?: "--:--:--"
+        Text(
+            text = "⏱ $elapsedDisplay (desde el clock-in)",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun WorkOrderDetailsGrid(
+    partNumber: String?,
+    operationName: String?,
+    operationCode: String?
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        WorkOrderGridItem(
+            label = "Part Number",
+            value = partNumber?.takeIf { it.isNotBlank() } ?: "--"
+        )
+
+        val operationValue = when {
+            !operationName.isNullOrBlank() -> operationName
+            !operationCode.isNullOrBlank() -> operationCode
+            else -> "--"
+        }
+
+        WorkOrderGridItem(
+            label = "Operation",
+            value = operationValue
+        )
+    }
+}
+
+@Composable
+private fun RowScope.WorkOrderGridItem(
+    label: String,
+    value: String
+) {
+    val locale = Locale.getDefault()
+    Column(
+        modifier = Modifier.weight(1f),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = label.uppercase(locale),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private fun parseClockInInstant(clockInTime: String?): Instant? {
+    if (clockInTime.isNullOrBlank()) {
+        return null
+    }
+
+    return runCatching { OffsetDateTime.parse(clockInTime).toInstant() }
+        .recoverCatching { Instant.parse(clockInTime) }
+        .getOrNull()
+}
+
+private fun formatClockInDisplay(
+    clockInInstant: Instant,
+    locale: Locale
+): String {
+    val zonedDateTime = clockInInstant.atZone(ZoneId.systemDefault())
+    val formatter = DateTimeFormatter.ofPattern("EEE, MMM d — hh:mm a", locale)
+    return formatter.format(zonedDateTime)
+}
+
+private fun formatElapsed(clockInInstant: Instant): String {
+    val duration = Duration.between(clockInInstant, Instant.now())
+    val safeDuration = if (duration.isNegative) Duration.ZERO else duration
+    val totalSeconds = safeDuration.seconds
+    val hours = totalSeconds / 3_600
+    val minutes = (totalSeconds % 3_600) / 60
+    val seconds = totalSeconds % 60
+
+    return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
 }
 
 @Composable
