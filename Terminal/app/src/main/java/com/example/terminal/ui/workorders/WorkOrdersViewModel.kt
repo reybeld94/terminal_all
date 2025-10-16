@@ -144,10 +144,8 @@ class WorkOrdersViewModel(
         viewModelScope.launch {
             val result = repository.clockIn(workOrderId, employee)
             result.fold(
-                onSuccess = { response ->
-                    val successMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: "Clock In registrado correctamente"
-                    showMessage(successMessage)
+                onSuccess = {
+                    showMessage("Clock In registrado correctamente")
                 },
                 onFailure = { error ->
                     showMessage(error.message ?: "Error al registrar Clock In")
@@ -198,10 +196,8 @@ class WorkOrdersViewModel(
                 complete = status.isComplete
             )
             result.fold(
-                onSuccess = { response ->
-                    val successMessage = response.message?.takeIf { it.isNotBlank() }
-                        ?: "Clock Out registrado correctamente"
-                    showMessage(successMessage)
+                onSuccess = {
+                    showMessage("Clock Out registrado correctamente")
                 },
                 onFailure = { error ->
                     showMessage(error.message ?: "Error al registrar Clock Out")
