@@ -439,12 +439,12 @@ private fun EmployeeStatusCard(
                         color = MaterialTheme.colorScheme.onTertiary
                     )
                     Text(
-                        text = "Employee ID: ${employeeId.ifBlank { "--" }}",
+                        text = "Employee: ${status.firstName} ${status.lastName}",
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
                     )
                     Text(
-                        text = "User ID: ${status.userId}",
+                        text = "Employee ID: ${employeeId.ifBlank { "--" }}",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -458,12 +458,9 @@ private fun EmployeeStatusCard(
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onTertiary
                         )
-                        WorkOrderDetailRow("Collection ID", workOrder.workOrderCollectionId?.toString())
                         WorkOrderDetailRow("Work Order #", workOrder.workOrderNumber)
-                        WorkOrderDetailRow("Assembly #", workOrder.workOrderAssemblyNumber)
                         WorkOrderDetailRow("Clock In", workOrder.clockInTime)
-                        WorkOrderDetailRow("Part #", workOrder.partNumber)
-                        WorkOrderDetailRow("Operation Code", workOrder.operationCode)
+                        WorkOrderDetailRow("Part Number", workOrder.partNumber)
                         WorkOrderDetailRow("Operation Name", workOrder.operationName)
                     }
                 } else {
