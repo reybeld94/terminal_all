@@ -3,9 +3,10 @@ package com.example.terminal.data.repository
 import android.os.Build
 import com.example.terminal.data.local.UserPrefs
 import com.example.terminal.data.network.ApiClient
-import com.example.terminal.data.network.ApiResponse
 import com.example.terminal.data.network.ClockInRequest
+import com.example.terminal.data.network.ClockInResponse
 import com.example.terminal.data.network.ClockOutRequest
+import com.example.terminal.data.network.ClockOutResponse
 import com.example.terminal.data.network.UserStatusResponse
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ class WorkOrdersRepository(
     suspend fun clockIn(
         workOrderAssemblyId: Int,
         userId: String
-    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+    ): Result<ClockInResponse> = withContext(Dispatchers.IO) {
         val baseUrl = userPrefs.serverAddress.first()
         try {
             val apiService = ApiClient.getApiService(baseUrl)
@@ -63,8 +64,8 @@ class WorkOrdersRepository(
                 val body = response.body()
                 when {
                     body == null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
-                    !body.hasSuccessStatus() -> {
-                        val message = body.message?.takeIf { it.isNotBlank() }
+                    !body.status.isSuccessStatus() -> {
+                        val message = body.status?.takeIf { it.isNotBlank() }
                             ?: "Operación de Clock In rechazada por el servidor"
                         Result.failure(IllegalStateException(message))
                     }
@@ -86,7 +87,7 @@ class WorkOrdersRepository(
         quantityScrapped: Int = 0,
         scrapReasonPK: Int = 0,
         comment: String = ""
-    ): Result<ApiResponse> = withContext(Dispatchers.IO) {
+    ): Result<ClockOutResponse> = withContext(Dispatchers.IO) {
         val baseUrl = userPrefs.serverAddress.first()
         try {
             val apiService = ApiClient.getApiService(baseUrl)
@@ -107,8 +108,8 @@ class WorkOrdersRepository(
                 val body = response.body()
                 when {
                     body == null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
-                    !body.hasSuccessStatus() -> {
-                        val message = body.message?.takeIf { it.isNotBlank() }
+                    !body.status.isSuccessStatus() -> {
+                        val message = body.status?.takeIf { it.isNotBlank() }
                             ?: "Operación de Clock Out rechazada por el servidor"
                         Result.failure(IllegalStateException(message))
                     }
@@ -123,32 +124,11 @@ class WorkOrdersRepository(
         }
     }
 
-    private fun parseError(errorBody: String?): String {
-        if (errorBody.isNullOrBlank()) {
-            return "Error desconocido"
-        }
-
-        return try {
-            val parsed = gson.fromJson(errorBody, ApiResponse::class.java)
-            parsed?.message?.takeIf { it.isNotBlank() } ?: errorBody
-        } catch (ex: Exception) {
-            errorBody
-        }
-    }
-
     private fun parseUserStatusError(code: Int, errorBody: String?): String {
         if (code == 404) {
             return "Wrong user"
         }
-        if (errorBody.isNullOrBlank()) {
-            return "Error al validar usuario"
-        }
-        return try {
-            val parsed = gson.fromJson(errorBody, ErrorDetailResponse::class.java)
-            parsed?.detail?.takeIf { it.isNotBlank() } ?: errorBody
-        } catch (ex: Exception) {
-            errorBody
-        }
+        return parseError(errorBody, defaultMessage = "Error al validar usuario")
     }
 
     private fun currentIsoDateTime(): String {
@@ -161,7 +141,38 @@ class WorkOrdersRepository(
         }
     }
 
-    private fun ApiResponse.hasSuccessStatus(): Boolean = status.equals("success", ignoreCase = true)
+    private fun parseError(errorBody: String?, defaultMessage: String = "Error desconocido"): String {
+        if (errorBody.isNullOrBlank()) {
+            return defaultMessage
+        }
+
+        val parsedDetail = parseErrorDetail(errorBody)
+        return parsedDetail ?: errorBody
+    }
+
+    private fun parseErrorDetail(errorBody: String): String? {
+        return try {
+            val simpleDetail = gson.fromJson(errorBody, ErrorDetailResponse::class.java)
+            when {
+                simpleDetail?.detail.isNullOrBlank() -> {
+                    val validationDetail = gson.fromJson(errorBody, ValidationErrorResponse::class.java)
+                    validationDetail?.detail
+                        ?.firstNotNullOfOrNull { it.message?.takeIf { msg -> msg.isNotBlank() } }
+                }
+
+                else -> simpleDetail?.detail
+            }
+        } catch (ex: Exception) {
+            null
+        }
+    }
+
+    private fun String?.isSuccessStatus(): Boolean {
+        if (this.isNullOrBlank()) {
+            return false
+        }
+        return equals("success", ignoreCase = true) || equals("ok", ignoreCase = true)
+    }
 
     private companion object {
         const val DIVISION_FK = 1
@@ -218,4 +229,14 @@ private fun UserStatusResponse.toDomain(): UserStatus {
 
 private data class ErrorDetailResponse(
     @SerializedName("detail") val detail: String?
+)
+
+private data class ValidationErrorDetail(
+    @SerializedName("msg") val message: String?,
+    @SerializedName("loc") val location: List<Any>?,
+    @SerializedName("type") val type: String?
+)
+
+private data class ValidationErrorResponse(
+    @SerializedName("detail") val detail: List<ValidationErrorDetail>?
 )

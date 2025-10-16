@@ -9,6 +9,11 @@ data class ClockInRequest(
     @SerializedName("deviceDate") val deviceDate: String
 )
 
+data class ClockInResponse(
+    @SerializedName("status") val status: String?,
+    @SerializedName("workOrderCollectionId") val workOrderCollectionId: Int?
+)
+
 data class ClockOutRequest(
     @SerializedName("workOrderCollectionId") val workOrderCollectionId: Int,
     @SerializedName("quantity") val quantity: Int,
@@ -20,9 +25,8 @@ data class ClockOutRequest(
     @SerializedName("divisionFK") val divisionFK: Int
 )
 
-data class ApiResponse(
-    @SerializedName("status") val status: String,
-    @SerializedName("message") val message: String?
+data class ClockOutResponse(
+    @SerializedName("status") val status: String?
 )
 
 data class UserStatusResponse(

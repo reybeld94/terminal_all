@@ -8,10 +8,10 @@ import retrofit2.http.Path
 
 interface ApiService {
     @POST("clock-in")
-    suspend fun clockIn(@Body request: ClockInRequest): Response<ApiResponse>
+    suspend fun clockIn(@Body request: ClockInRequest): Response<ClockInResponse>
 
     @POST("clock-out")
-    suspend fun clockOut(@Body request: ClockOutRequest): Response<ApiResponse>
+    suspend fun clockOut(@Body request: ClockOutRequest): Response<ClockOutResponse>
 
     @GET("users/{userId}")
     suspend fun getUserStatus(@Path("userId") userId: String): Response<UserStatusResponse>
