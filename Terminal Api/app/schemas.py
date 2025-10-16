@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ClockInRequest(BaseModel):
@@ -65,3 +65,48 @@ class UserStatusResponse(BaseModel):
     operation_name: Optional[str] = Field(default=None, alias="operationName")
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("work_order_number", mode="before")
+    @classmethod
+    def _coerce_work_order_number(cls, value: object) -> Optional[str]:
+        """Ensure the work order number is serialized as a string."""
+
+        if value is None:
+            return None
+        return str(value)
+
+    @field_validator("clock_in_time", mode="before")
+    @classmethod
+    def _parse_clock_in_time(
+        cls, value: object
+    ) -> Optional[datetime]:  # pragma: no cover - parsing is data dependent
+        """Coerce various database representations into ``datetime``."""
+
+        if value in (None, ""):
+            return None
+
+        if isinstance(value, datetime):
+            return value
+
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return datetime.combine(value, datetime.min.time())
+
+        if isinstance(value, time):
+            return datetime.combine(date.today(), value)
+
+        if isinstance(value, str):
+            # Try ISO first
+            try:
+                return datetime.fromisoformat(value)
+            except ValueError:
+                pass
+
+            time_formats = ["%H:%M:%S", "%H:%M"]
+            for fmt in time_formats:
+                try:
+                    parsed_time = datetime.strptime(value, fmt).time()
+                except ValueError:
+                    continue
+                return datetime.combine(date.today(), parsed_time)
+
+        raise ValueError("Invalid clock_in_time value")
