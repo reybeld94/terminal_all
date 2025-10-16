@@ -80,14 +80,14 @@ fun ClockOutDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Clock OUT WO",
+                            text = "Clock Out Work Order",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         IconButton(onClick = onDismiss) {
                             androidx.compose.material3.Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Cerrar",
+                                contentDescription = "Close",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -97,7 +97,7 @@ fun ClockOutDialog(
                         OutlinedTextField(
                             value = qty,
                             onValueChange = { input -> qty = input.filter { it.isDigit() } },
-                            label = { Text(text = "Cantidad") },
+                            label = { Text(text = "Quantity") },
                             placeholder = { Text(text = "0") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
