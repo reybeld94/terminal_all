@@ -226,6 +226,14 @@ class WorkOrdersViewModel(
             )
             result.fold(
                 onSuccess = {
+                    _uiState.update { current ->
+                        val updatedStatus = current.userStatus?.copy(activeWorkOrder = null)
+                        current.copy(
+                            userStatus = updatedStatus,
+                            workOrderId = "",
+                            activeField = WorkOrderInputField.WORK_ORDER
+                        )
+                    }
                     showMessage("Clock Out registrado correctamente")
                 },
                 onFailure = { error ->
