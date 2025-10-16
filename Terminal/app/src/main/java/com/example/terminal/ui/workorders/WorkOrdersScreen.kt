@@ -282,58 +282,58 @@ private fun WorkOrdersForm(
                     }
                 }
             }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(34.dp)
-        ) {
-            Button(
-                onClick = onClockIn,
-                enabled = isClockInEnabled,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary,
-                    disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
-                    disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
-                )
+            Spacer(modifier = Modifier.height(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(34.dp)
             ) {
-                Text(
-                    text = "Clock IN WO",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onTertiary,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+                Button(
+                    onClick = onClockIn,
+                    enabled = isClockInEnabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary,
+                        disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
+                        disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
+                    )
+                ) {
+                    Text(
+                        text = "Clock IN WO",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onTertiary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-            OutlinedButton(
-                onClick = onClockOut,
-                enabled = isClockOutEnabled,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                ),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = if (isClockOutEnabled) {
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
-                    } else {
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
-                    }
-                )
-            ) {
-                Text(
-                    text = "Clock OUT WO",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
+                OutlinedButton(
+                    onClick = onClockOut,
+                    enabled = isClockOutEnabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(60.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (isClockOutEnabled) {
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                        }
+                    )
+                ) {
+                    Text(
+                        text = "Clock OUT WO",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
