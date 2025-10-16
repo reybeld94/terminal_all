@@ -19,15 +19,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -118,6 +123,7 @@ fun WorkOrdersScreen(
                     uiState = uiState,
                     onEmployeeClick = viewModel::onEmployeeFieldSelected,
                     onWorkOrderClick = viewModel::onWorkOrderFieldSelected,
+                    onEmployeeCardClose = viewModel::onEmployeeCardDismissed,
                     onClockIn = viewModel::onClockIn,
                     onClockOut = viewModel::onClockOutClick
                 )
@@ -152,6 +158,7 @@ private fun WorkOrdersForm(
     uiState: WorkOrdersUiState,
     onEmployeeClick: () -> Unit,
     onWorkOrderClick: () -> Unit,
+    onEmployeeCardClose: () -> Unit,
     onClockIn: () -> Unit,
     onClockOut: () -> Unit
 ) {
@@ -214,7 +221,8 @@ private fun WorkOrdersForm(
                 uiState.userStatus?.let { status ->
                     EmployeeStatusCard(
                         status = status,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        onClose = onEmployeeCardClose
                     )
                     Spacer(modifier = Modifier.height(28.dp))
                 }
@@ -429,7 +437,8 @@ private fun SelectableField(
 @Composable
 private fun EmployeeStatusCard(
     status: UserStatus,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClose: () -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -455,19 +464,36 @@ private fun EmployeeStatusCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Employee",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onTertiary
-                    )
-                    Text(
-                        text = listOfNotNull(status.firstName, status.lastName)
-                            .joinToString(separator = " ")
-                            .ifBlank { "--" },
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Employee",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onTertiary
+                        )
+                        Text(
+                            text = listOfNotNull(status.firstName, status.lastName)
+                                .joinToString(separator = " ")
+                                .ifBlank { "--" },
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onClose,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Cerrar tarjeta de empleado",
+                            tint = MaterialTheme.colorScheme.onTertiary
+                        )
+                    }
                 }
 
                 val workOrder = status.activeWorkOrder

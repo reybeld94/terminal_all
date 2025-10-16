@@ -35,7 +35,7 @@ data class WorkOrdersUiState(
     val userStatus: UserStatus? = null
 )
 
-private const val WORK_ORDER_TIMEOUT_MS = 10_000L
+private const val WORK_ORDER_TIMEOUT_MS = 20_000L
 
 class WorkOrdersViewModel(
     private val repository: WorkOrdersRepository,
@@ -72,6 +72,10 @@ class WorkOrdersViewModel(
         if (_uiState.value.isEmployeeValidated) {
             _uiState.update { it.copy(activeField = WorkOrderInputField.WORK_ORDER) }
         }
+    }
+
+    fun onEmployeeCardDismissed() {
+        resetToEmployeeStep()
     }
 
     fun setDigit(digit: String) {
