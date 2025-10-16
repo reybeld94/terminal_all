@@ -153,11 +153,13 @@ private fun WorkOrdersForm(
     onClockIn: () -> Unit,
     onClockOut: () -> Unit
 ) {
+    val hasActiveWorkOrder = uiState.userStatus?.activeWorkOrder != null
     val isClockInEnabled = uiState.isEmployeeValidated &&
         uiState.employeeId.isNotBlank() &&
         uiState.workOrderId.isNotBlank() &&
-        !uiState.isLoading
-    val isClockOutEnabled = isClockInEnabled && !uiState.isLoading
+        !uiState.isLoading &&
+        !hasActiveWorkOrder
+    val isClockOutEnabled = uiState.isEmployeeValidated && hasActiveWorkOrder && !uiState.isLoading
     val employeeInstruction = "Enter your Employee ID and press Enter on the keypad to validate."
     val workOrderInstruction = "Use the keypad to enter or scan the assembly number and press Enter to continue."
     Column(
@@ -210,7 +212,6 @@ private fun WorkOrdersForm(
                 uiState.userStatus?.let { status ->
                     EmployeeStatusCard(
                         status = status,
-                        employeeId = uiState.employeeId,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(28.dp))
@@ -222,30 +223,40 @@ private fun WorkOrdersForm(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        StepHeading(
-                            title = "Please enter or scan your assembly number",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+                    if (!hasActiveWorkOrder) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            StepHeading(
+                                title = "Please enter or scan your assembly number",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        SelectableField(
-                            label = "Assembly #",
-                            value = uiState.workOrderId,
-                            isActive = uiState.activeField == WorkOrderInputField.WORK_ORDER,
-                            onClick = onWorkOrderClick,
-                            enabled = uiState.isEmployeeValidated && !uiState.isLoading
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
+                            SelectableField(
+                                label = "Assembly #",
+                                value = uiState.workOrderId,
+                                isActive = uiState.activeField == WorkOrderInputField.WORK_ORDER,
+                                onClick = onWorkOrderClick,
+                                enabled = uiState.isEmployeeValidated && !uiState.isLoading
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = workOrderInstruction,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Normal
+                                ),
+                                color = TerminalHelperText,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    } else {
                         Text(
-                            text = workOrderInstruction,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Normal
-                            ),
+                            text = "You are already clocked in on a work order. Please clock out before starting another.",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                             color = TerminalHelperText,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
@@ -416,7 +427,6 @@ private fun SelectableField(
 @Composable
 private fun EmployeeStatusCard(
     status: UserStatus,
-    employeeId: String,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -443,21 +453,18 @@ private fun EmployeeStatusCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Employee",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onTertiary
                     )
                     Text(
-                        text = "Employee: ${status.firstName} ${status.lastName}",
+                        text = listOfNotNull(status.firstName, status.lastName)
+                            .joinToString(separator = " ")
+                            .ifBlank { "--" },
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
-                    )
-                    Text(
-                        text = "Employee ID: ${employeeId.ifBlank { "--" }}",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
 
@@ -521,7 +528,7 @@ private fun WorkOrderNumberHeading(
 
 @Composable
 private fun ClockInInfo(clockInTime: String?) {
-    val locale = Locale.getDefault()
+    val locale = Locale.US
     val clockInInstant = remember(clockInTime) { parseClockInInstant(clockInTime) }
     val formattedClockIn = remember(clockInInstant, clockInTime, locale) {
         clockInInstant?.let { formatClockInDisplay(it, locale) }
@@ -561,7 +568,7 @@ private fun ClockInInfo(clockInTime: String?) {
         )
         val elapsedDisplay = elapsed ?: "--:--:--"
         Text(
-            text = "⏱ $elapsedDisplay (desde el clock-in)",
+            text = "⏱ $elapsedDisplay (since clock-in)",
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal
@@ -646,7 +653,7 @@ private fun formatClockInDisplay(
     locale: Locale
 ): String {
     val zonedDateTime = clockInInstant.atZone(ZoneId.systemDefault())
-    val formatter = DateTimeFormatter.ofPattern("EEE, MMM d — hh:mm a", locale)
+    val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy • h:mm a", locale)
     return formatter.format(zonedDateTime)
 }
 

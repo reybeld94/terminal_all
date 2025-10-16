@@ -162,23 +162,37 @@ class WorkOrdersViewModel(
     }
 
     fun onClockOutClick() {
-        val employee = _uiState.value.employeeId.trim()
-        val workOrder = _uiState.value.workOrderId.trim()
+        val state = _uiState.value
+        val employee = state.employeeId.trim()
+        val workOrder = state.workOrderId.trim()
+        val activeWorkOrderId = state.userStatus?.activeWorkOrder?.workOrderCollectionId
 
-        if (!_uiState.value.isEmployeeValidated) {
+        if (!state.isEmployeeValidated) {
             showMessage("Valide el empleado antes de continuar")
             return
         }
-        if (employee.isEmpty() || workOrder.isEmpty()) {
+        if (employee.isEmpty()) {
             showMessage("Employee # y Work Order # son requeridos")
             return
+        }
+        if (activeWorkOrderId == null) {
+            if (workOrder.isEmpty()) {
+                showMessage("Employee # y Work Order # son requeridos")
+                return
+            }
+            if (!workOrder.isDigitsOnly()) {
+                showMessage("Ingrese valores numéricos válidos")
+                return
+            }
         }
         _uiState.update { it.copy(showClockOutDialog = true) }
     }
 
     fun onClockOut(qty: String, status: ClockOutStatus) {
-        val employee = _uiState.value.employeeId.trim()
-        val workOrder = _uiState.value.workOrderId.trim()
+        val state = _uiState.value
+        val employee = state.employeeId.trim()
+        val workOrder = state.workOrderId.trim()
+        val activeWorkOrderId = state.userStatus?.activeWorkOrder?.workOrderCollectionId
 
         val quantity = qty.toIntOrNull()
         if (quantity == null || quantity <= 0) {
@@ -186,12 +200,16 @@ class WorkOrdersViewModel(
             return
         }
 
-        if (!employee.isDigitsOnly() || !workOrder.isDigitsOnly()) {
+        if (!employee.isDigitsOnly()) {
             showMessage("Ingrese valores numéricos válidos")
             return
         }
 
-        val workOrderId = workOrder.toInt()
+        val workOrderId = activeWorkOrderId ?: workOrder.toIntOrNull()
+        if (workOrderId == null) {
+            showMessage("Employee # y Work Order # son requeridos")
+            return
+        }
 
         setLoading(true)
         _uiState.update { it.copy(showClockOutDialog = false) }
@@ -267,15 +285,26 @@ class WorkOrdersViewModel(
             val result = repository.fetchUserStatus(employee)
             result.fold(
                 onSuccess = { status ->
+                    val activeWorkOrder = status.activeWorkOrder
                     _uiState.update {
                         it.copy(
                             isEmployeeValidated = true,
                             employeeValidationError = null,
                             userStatus = status,
-                            activeField = WorkOrderInputField.WORK_ORDER
+                            workOrderId = activeWorkOrder?.workOrderCollectionId?.toString()
+                                ?: it.workOrderId,
+                            activeField = if (activeWorkOrder == null) {
+                                WorkOrderInputField.WORK_ORDER
+                            } else {
+                                WorkOrderInputField.EMPLOYEE
+                            }
                         )
                     }
-                    startWorkOrderTimeout()
+                    if (activeWorkOrder == null) {
+                        startWorkOrderTimeout()
+                    } else {
+                        cancelWorkOrderTimeout()
+                    }
                 },
                 onFailure = { error ->
                     _uiState.update {
