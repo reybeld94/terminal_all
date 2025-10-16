@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">Terminal</string>
+    <string name="clock_in_out">Clock In/Out</string>
+    <string name="work_orders">Work Orders</string>
+    <string name="issue_materials">Issue Materials</string>
+    <string name="main_menu_placeholder">Selecciona una opción del menú</string>
+    <string name="clock_in_out_screen">Pantalla Clock In/Out</string>
+    <string name="work_orders_screen">Pantalla Work Orders</string>
+    <string name="issue_materials_screen">Pantalla Issue Materials</string>
+    <string name="clock_in_out_display_placeholder">Ingresa número de empleado</string>
+    <string name="clear">Borrar</string>
+    <string name="enter">Enter</string>
+    <string name="toast_clock_in_success">Clock In Successful</string>
+    <string name="toast_clock_out_success">Clock Out Successful</string>
+    <string name="toast_enter_employee_number">Ingresa un número de empleado</string>
+    <string name="default_input_placeholder">--</string>
+    <string name="work_orders_active_employee">Ingresando número de empleado</string>
+    <string name="work_orders_active_work_order">Ingresando orden de trabajo</string>
+    <string name="work_orders_employee_label">Empleado</string>
+    <string name="work_orders_work_order_label">Orden de trabajo</string>
+    <string name="toast_enter_employee_and_work_order">Ingresa número de empleado y orden de trabajo</string>
+    <string name="toast_clock_in_wo">Employee %1$s Clocked In on WO %2$s</string>
+    <string name="toast_clock_out_wo">Employee %1$s Clocked Out from WO %2$s</string>
+    <string name="button_clock_in_wo">Clock In WO</string>
+    <string name="button_clock_out_wo">Clock Out WO</string>
+    <string name="issue_materials_active_employee">Ingresando número de empleado</string>
+    <string name="issue_materials_active_material">Ingresando código de material</string>
+    <string name="issue_materials_employee_label">Empleado</string>
+    <string name="issue_materials_material_label">Material</string>
+    <string name="toast_enter_employee_and_material">Ingresa número de empleado y código de material</string>
+    <string name="toast_issue_material">Employee %1$s issued Material %2$s</string>
+    <string name="button_issue_material">Issue Material</string>
+</resources>
