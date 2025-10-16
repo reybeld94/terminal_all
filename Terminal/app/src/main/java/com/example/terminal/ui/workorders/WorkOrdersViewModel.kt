@@ -189,6 +189,7 @@ class WorkOrdersViewModel(
                 return
             }
         }
+        cancelWorkOrderTimeout()
         _uiState.update { it.copy(showClockOutDialog = true) }
     }
 
@@ -232,11 +233,13 @@ class WorkOrdersViewModel(
                 }
             )
             setLoading(false)
+            startWorkOrderTimeout()
         }
     }
 
     fun dismissClockOutDialog() {
         _uiState.update { it.copy(showClockOutDialog = false) }
+        startWorkOrderTimeout()
     }
 
     fun dismissSnackbar() {
@@ -304,11 +307,7 @@ class WorkOrdersViewModel(
                             }
                         )
                     }
-                    if (activeWorkOrder == null) {
-                        startWorkOrderTimeout()
-                    } else {
-                        cancelWorkOrderTimeout()
-                    }
+                    startWorkOrderTimeout()
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -329,7 +328,16 @@ class WorkOrdersViewModel(
         workOrderTimeoutJob = viewModelScope.launch {
             delay(WORK_ORDER_TIMEOUT_MS)
             val shouldReset = _uiState.value.let { state ->
-                state.isEmployeeValidated && state.workOrderId.isBlank()
+                if (!state.isEmployeeValidated || state.isLoading || state.showClockOutDialog) {
+                    false
+                } else {
+                    val hasActiveWorkOrder = state.userStatus?.activeWorkOrder != null
+                    if (hasActiveWorkOrder) {
+                        true
+                    } else {
+                        state.workOrderId.isBlank()
+                    }
+                }
             }
             if (shouldReset) {
                 resetToEmployeeStep()
