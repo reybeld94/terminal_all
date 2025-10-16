@@ -122,6 +122,7 @@ class WorkOrdersViewModel(
     fun onClockIn() {
         val employee = _uiState.value.employeeId.trim()
         val workOrder = _uiState.value.workOrderId.trim()
+        val userId = _uiState.value.userStatus?.userId
 
         if (!_uiState.value.isEmployeeValidated) {
             showMessage("Valide el empleado antes de continuar")
@@ -138,11 +139,16 @@ class WorkOrdersViewModel(
             return
         }
 
+        if (userId == null) {
+            showMessage("No se pudo obtener el usuario. Valide nuevamente.")
+            return
+        }
+
         val workOrderId = workOrder.toInt()
 
         setLoading(true)
         viewModelScope.launch {
-            val result = repository.clockIn(workOrderId, employee)
+            val result = repository.clockIn(workOrderId, userId)
             result.fold(
                 onSuccess = {
                     showMessage("Clock In registrado correctamente")

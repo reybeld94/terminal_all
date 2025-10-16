@@ -46,7 +46,7 @@ class WorkOrdersRepository(
 
     suspend fun clockIn(
         workOrderAssemblyId: Int,
-        userId: String
+        userId: Int
     ): Result<ClockInResponse> = withContext(Dispatchers.IO) {
         val baseUrl = userPrefs.serverAddress.first()
         try {
@@ -54,7 +54,7 @@ class WorkOrdersRepository(
             val response = apiService.clockIn(
                 ClockInRequest(
                     workOrderAssemblyId = workOrderAssemblyId,
-                    userId = userId,
+                    userId = userId.toString(),
                     divisionFK = DIVISION_FK,
                     deviceDate = currentIsoDateTime()
                 )
