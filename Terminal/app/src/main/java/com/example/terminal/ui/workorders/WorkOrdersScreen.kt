@@ -37,7 +37,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -308,29 +307,23 @@ private fun WorkOrdersForm(
                     )
                 }
 
-                OutlinedButton(
+                Button(
                     onClick = onClockOut,
                     enabled = isClockOutEnabled,
                     modifier = Modifier
                         .weight(1f)
                         .height(60.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    ),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = if (isClockOutEnabled) {
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.8f)
-                        } else {
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
-                        }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.6f)
                     )
                 ) {
                     Text(
                         text = "Clock OUT WO",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onError,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
