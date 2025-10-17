@@ -480,14 +480,20 @@ private fun EmployeeStatusCard(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = "Employee",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
                             color = MaterialTheme.colorScheme.onTertiary
                         )
                         Text(
                             text = listOfNotNull(status.firstName, status.lastName)
                                 .joinToString(separator = " ")
                                 .ifBlank { "--" },
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
                         )
                     }
@@ -529,7 +535,10 @@ private fun EmployeeStatusCard(
                 } else {
                     Text(
                         text = "No active work order",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -587,18 +596,18 @@ private fun ClockInInfo(clockInTime: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = "CLOCK IN",
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.8.sp
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
             ),
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
         Text(
             text = formattedClockIn ?: "--",
             style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             ),
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -606,8 +615,8 @@ private fun ClockInInfo(clockInTime: String?) {
         Text(
             text = "⏱ $elapsedDisplay (since clock-in)",
             style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
             ),
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -654,18 +663,18 @@ private fun RowScope.WorkOrderGridItem(
     ) {
         Text(
             text = label.uppercase(locale),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontSize = 12.sp,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp
+                letterSpacing = 1.sp
             ),
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             ),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
