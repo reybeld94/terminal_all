@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.nativeKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -161,7 +160,7 @@ fun WorkOrdersScreen(
                         }
 
                         else -> {
-                            val unicodeChar = event.nativeKeyEvent?.unicodeChar ?: 0
+                            val unicodeChar = event.androidKeyEvent?.unicodeChar ?: 0
                             if (unicodeChar != 0) {
                                 val char = unicodeChar.toChar()
                                 if (!char.isWhitespace()) {
@@ -171,7 +170,7 @@ fun WorkOrdersScreen(
                                     false
                                 }
                             } else {
-                                when (event.nativeKeyEvent?.keyCode) {
+                                when (event.androidKeyEvent?.keyCode) {
                                     AndroidKeyEvent.KEYCODE_ENTER,
                                     AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> {
                                         val scanned = barcodeBuffer.trim()
