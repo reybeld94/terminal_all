@@ -42,6 +42,16 @@ data class UserStatusResponse(
     @SerializedName("operationName") val operationName: String?
 )
 
+data class WorkOrderDetailsResponse(
+    @SerializedName("workOrderAssemblyId") val workOrderAssemblyId: Int,
+    @SerializedName("workOrderNumber") val workOrderNumber: String?,
+    @SerializedName("workOrderAssemblyNumber") val workOrderAssemblyNumber: String?,
+    @SerializedName("partNumber") val partNumber: String?,
+    @SerializedName("operationCode") val operationCode: String?,
+    @SerializedName("operationName") val operationName: String?,
+    @SerializedName("description") val description: String?
+)
+
 enum class ClockOutStatus(val isComplete: Boolean, val displayName: String) {
     COMPLETE(true, "Complete"),
     INCOMPLETE(false, "Incomplete");

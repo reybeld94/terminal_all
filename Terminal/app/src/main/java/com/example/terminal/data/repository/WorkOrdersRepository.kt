@@ -8,6 +8,7 @@ import com.example.terminal.data.network.ClockInResponse
 import com.example.terminal.data.network.ClockOutRequest
 import com.example.terminal.data.network.ClockOutResponse
 import com.example.terminal.data.network.UserStatusResponse
+import com.example.terminal.data.network.WorkOrderDetailsResponse
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -124,6 +125,35 @@ class WorkOrdersRepository(
         }
     }
 
+    suspend fun fetchWorkOrderDetails(
+        workOrderAssemblyId: String
+    ): Result<WorkOrderDetails> = withContext(Dispatchers.IO) {
+        val baseUrl = userPrefs.serverAddress.first()
+        try {
+            val apiService = ApiClient.getApiService(baseUrl)
+            val response = apiService.getWorkOrderDetails(workOrderAssemblyId)
+            if (response.isSuccessful) {
+                val body = response.body()
+                when (body) {
+                    null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
+                    else -> Result.success(body.toDomain())
+                }
+            } else {
+                val errorMessage = if (response.code() == 404) {
+                    "Assembly no encontrado"
+                } else {
+                    parseError(
+                        response.errorBody()?.string(),
+                        defaultMessage = "Error al obtener detalles del assembly"
+                    )
+                }
+                Result.failure(IllegalStateException(errorMessage))
+            }
+        } catch (ex: Exception) {
+            Result.failure(ex)
+        }
+    }
+
     private fun parseUserStatusError(code: Int, errorBody: String?): String {
         if (code == 404) {
             return "Wrong user"
@@ -196,6 +226,16 @@ data class ActiveWorkOrder(
     val operationName: String?
 )
 
+data class WorkOrderDetails(
+    val workOrderAssemblyId: Int,
+    val workOrderNumber: String?,
+    val workOrderAssemblyNumber: String?,
+    val partNumber: String?,
+    val operationCode: String?,
+    val operationName: String?,
+    val description: String?
+)
+
 private fun UserStatusResponse.toDomain(): UserStatus {
     val hasActiveWorkOrder = workOrderCollectionId != null ||
         !workOrderNumber.isNullOrBlank() ||
@@ -224,6 +264,18 @@ private fun UserStatusResponse.toDomain(): UserStatus {
         firstName = firstName,
         lastName = lastName,
         activeWorkOrder = activeWorkOrder
+    )
+}
+
+private fun WorkOrderDetailsResponse.toDomain(): WorkOrderDetails {
+    return WorkOrderDetails(
+        workOrderAssemblyId = workOrderAssemblyId,
+        workOrderNumber = workOrderNumber,
+        workOrderAssemblyNumber = workOrderAssemblyNumber,
+        partNumber = partNumber,
+        operationCode = operationCode,
+        operationName = operationName,
+        description = description
     )
 }
 

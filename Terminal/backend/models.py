@@ -60,6 +60,16 @@ class ClockOutRequest(StrictBaseModel):
         return value
 
 
+class WorkOrderDetailsResponse(StrictBaseModel):
+    workOrderAssemblyId: int
+    workOrderNumber: str | None = None
+    workOrderAssemblyNumber: str | None = None
+    partNumber: str | None = None
+    operationCode: str | None = None
+    operationName: str | None = None
+    description: str | None = None
+
+
 def _ensure_iso_datetime(value: str) -> None:
     try:
         datetime.fromisoformat(value.replace("Z", "+00:00"))

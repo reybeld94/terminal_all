@@ -71,6 +71,7 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.terminal.data.repository.UserStatus
+import com.example.terminal.data.repository.WorkOrderDetails
 import com.example.terminal.ui.theme.TerminalBackgroundBottom
 import com.example.terminal.ui.theme.TerminalBackgroundTop
 import com.example.terminal.ui.theme.TerminalHelperText
@@ -242,7 +243,12 @@ private fun WorkOrdersForm(
         !uiState.isLoading &&
         !hasActiveWorkOrder
     val isClockOutEnabled = uiState.isEmployeeValidated && hasActiveWorkOrder && !uiState.isLoading
-    val employeeInstruction = "Enter your Employee ID and press Enter on the keypad to validate."
+    val hasScannedAssembly = uiState.scannedWorkOrder != null
+    val employeeInstruction = if (hasScannedAssembly) {
+        "Scan your user ID to clock in to the scanned assembly."
+    } else {
+        "Enter your Employee ID and press Enter on the keypad to validate."
+    }
     val workOrderInstruction = "Use the keypad to enter or scan the assembly number and press Enter to continue."
     Column(
         modifier = modifier
@@ -251,11 +257,44 @@ private fun WorkOrdersForm(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (!uiState.isEmployeeValidated) {
+            val scannedDetails = uiState.scannedWorkOrder
+            val subtitle = scannedDetails?.let { details ->
+                val detailParts = buildList {
+                    details.workOrderNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    details.operationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    details.partNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
+                }
+                val joinedDetails = detailParts.joinToString(separator = " • ")
+                val assemblyLabel = details.displayAssemblyNumber()
+                if (joinedDetails.isBlank()) {
+                    "Assembly $assemblyLabel"
+                } else {
+                    "Assembly $assemblyLabel • $joinedDetails"
+                }
+            }
             StepHeading(
-                title = "Please enter or scan your user ID",
+                title = if (scannedDetails != null) {
+                    "Assembly scanned. Please scan your user ID"
+                } else {
+                    "Please enter or scan your user ID"
+                },
+                subtitle = subtitle,
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(24.dp))
+            if (uiState.isAssemblyLoading && scannedDetails == null && uiState.workOrderId.isNotBlank()) {
+                AssemblyLoadingCard(
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+            scannedDetails?.let { details ->
+                ScannedWorkOrderCard(
+                    workOrder = details,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
             SelectableField(
                 label = "Employee #",
                 value = uiState.employeeId,
@@ -311,6 +350,19 @@ private fun WorkOrdersForm(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            if (uiState.isAssemblyLoading && uiState.scannedWorkOrder == null && uiState.workOrderId.isNotBlank()) {
+                                AssemblyLoadingCard(
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                            uiState.scannedWorkOrder?.let { details ->
+                                ScannedWorkOrderCard(
+                                    workOrder = details,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                             StepHeading(
                                 title = "Please enter or scan your assembly number",
                                 modifier = Modifier.fillMaxWidth()
@@ -499,6 +551,96 @@ private fun SelectableField(
             disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
     )
+}
+
+@Composable
+private fun AssemblyLoadingCard(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(32.dp),
+                strokeWidth = 3.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Fetching assembly details…",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScannedWorkOrderCard(
+    workOrder: WorkOrderDetails,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Assembly details",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            WorkOrderNumberHeading(
+                workOrderNumber = workOrder.workOrderNumber,
+                assemblyNumber = workOrder.displayAssemblyNumber()
+            )
+
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+
+            if (!workOrder.description.isNullOrBlank()) {
+                Text(
+                    text = workOrder.description,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+            }
+
+            WorkOrderDetailsGrid(
+                partNumber = workOrder.partNumber,
+                operationName = workOrder.operationName,
+                operationCode = workOrder.operationCode
+            )
+        }
+    }
 }
 
 @Composable
@@ -740,6 +882,12 @@ private fun RowScope.WorkOrderGridItem(
             overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+private fun WorkOrderDetails.displayAssemblyNumber(): String {
+    return workOrderAssemblyNumber?.takeIf { it.isNotBlank() }
+        ?: workOrderAssemblyId.takeIf { it != 0 }?.toString()
+        ?: ""
 }
 
 private fun parseClockInInstant(clockInTime: String?): Instant? {
