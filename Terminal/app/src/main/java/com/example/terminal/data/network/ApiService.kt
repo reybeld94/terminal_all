@@ -15,4 +15,9 @@ interface ApiService {
 
     @GET("users/{userId}")
     suspend fun getUserStatus(@Path("userId") userId: String): Response<UserStatusResponse>
+
+    @GET("work-orders/{assemblyId}")
+    suspend fun getWorkOrderDetails(
+        @Path("assemblyId") assemblyId: String
+    ): Response<WorkOrderDetailsResponse>
 }

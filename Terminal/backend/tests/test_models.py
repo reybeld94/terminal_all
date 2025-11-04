@@ -1,6 +1,6 @@
 import pytest
 
-from ..models import ClockInRequest
+from ..models import ClockInRequest, WorkOrderDetailsResponse
 
 
 def test_clock_in_request_rejects_zero_user_id():
@@ -24,3 +24,15 @@ def test_clock_in_request_accepts_positive_user_id():
     )
 
     assert request.userId == 123
+
+
+def test_work_order_details_response_accepts_partial_payload():
+    response = WorkOrderDetailsResponse(
+        workOrderAssemblyId=42,
+        workOrderNumber="WO-42",
+        operationName="Assembly"
+    )
+
+    assert response.workOrderAssemblyId == 42
+    assert response.workOrderAssemblyNumber is None
+    assert response.operationName == "Assembly"

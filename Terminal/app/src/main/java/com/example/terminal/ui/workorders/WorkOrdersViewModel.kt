@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.terminal.data.local.UserPrefs
 import com.example.terminal.data.network.ClockOutStatus
 import com.example.terminal.data.repository.UserStatus
+import com.example.terminal.data.repository.WorkOrderDetails
 import com.example.terminal.data.repository.WorkOrdersRepository
 import com.example.terminal.di.AppContainer
 import java.util.Locale
@@ -36,7 +37,9 @@ data class WorkOrdersUiState(
     val employeeValidationError: String? = null,
     val userStatus: UserStatus? = null,
     val clockOutQuantity: String = "",
-    val clockOutStatus: ClockOutStatus = ClockOutStatus.COMPLETE
+    val clockOutStatus: ClockOutStatus = ClockOutStatus.COMPLETE,
+    val scannedWorkOrder: WorkOrderDetails? = null,
+    val isAssemblyLoading: Boolean = false
 )
 
 private const val WORK_ORDER_TIMEOUT_MS = 20_000L
@@ -51,6 +54,7 @@ class WorkOrdersViewModel(
 
     private var saveEmployeeJob: Job? = null
     private var workOrderTimeoutJob: Job? = null
+    private var workOrderDetailsJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -350,7 +354,9 @@ class WorkOrdersViewModel(
     }
 
     private fun handleAssemblyScan(workOrderCode: String) {
+        cancelWorkOrderTimeout()
         updateWorkOrderId(workOrderCode)
+        loadWorkOrderDetails(workOrderCode)
         val isEmployeeValidated = _uiState.value.isEmployeeValidated
         _uiState.update { current ->
             val nextField = if (isEmployeeValidated) {
@@ -362,6 +368,69 @@ class WorkOrdersViewModel(
         }
         if (!isEmployeeValidated) {
             showMessage("Assembly escaneado. Escanee su usuario para continuar")
+        } else {
+            attemptAutoClockIn()
+        }
+    }
+
+    private fun loadWorkOrderDetails(workOrderCode: String) {
+        if (workOrderCode.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    scannedWorkOrder = null,
+                    isAssemblyLoading = false
+                )
+            }
+            workOrderDetailsJob?.cancel()
+            workOrderDetailsJob = null
+            return
+        }
+
+        workOrderDetailsJob?.cancel()
+        _uiState.update {
+            it.copy(
+                scannedWorkOrder = null,
+                isAssemblyLoading = true
+            )
+        }
+
+        workOrderDetailsJob = viewModelScope.launch {
+            val result = repository.fetchWorkOrderDetails(workOrderCode)
+            result.fold(
+                onSuccess = { details ->
+                    _uiState.update { current ->
+                        current.copy(
+                            workOrderId = details.workOrderAssemblyId.toString(),
+                            scannedWorkOrder = details,
+                            isAssemblyLoading = false
+                        )
+                    }
+                    attemptAutoClockIn()
+                },
+                onFailure = { error ->
+                    _uiState.update { current ->
+                        current.copy(
+                            scannedWorkOrder = null,
+                            isAssemblyLoading = false
+                        )
+                    }
+                    showMessage(error.message ?: "No se pudo obtener la información del assembly")
+                }
+            )
+        }
+    }
+
+    private fun attemptAutoClockIn() {
+        val state = _uiState.value
+        val canClockIn = state.isEmployeeValidated &&
+            !state.isLoading &&
+            !state.isAssemblyLoading &&
+            state.scannedWorkOrder != null &&
+            state.userStatus?.activeWorkOrder == null &&
+            state.workOrderId.isDigitsOnly()
+
+        if (canClockIn) {
+            onClockIn()
         }
     }
 
@@ -388,8 +457,20 @@ class WorkOrdersViewModel(
     }
 
     private fun updateWorkOrderId(value: String) {
-        _uiState.update { it.copy(workOrderId = value) }
+        _uiState.update { current ->
+            val matchingDetails = current.scannedWorkOrder?.takeIf { details ->
+                details.workOrderAssemblyId.toString() == value ||
+                    details.workOrderAssemblyNumber == value
+            }
+            current.copy(
+                workOrderId = value,
+                scannedWorkOrder = if (value.isBlank()) null else matchingDetails,
+                isAssemblyLoading = if (value.isBlank()) false else current.isAssemblyLoading
+            )
+        }
         if (value.isBlank()) {
+            workOrderDetailsJob?.cancel()
+            workOrderDetailsJob = null
             if (_uiState.value.isEmployeeValidated) {
                 startWorkOrderTimeout()
             }
@@ -422,6 +503,7 @@ class WorkOrdersViewModel(
 
         setLoading(true)
         viewModelScope.launch {
+            var shouldAttemptClockIn = false
             val result = repository.fetchUserStatus(employee)
             result.fold(
                 onSuccess = { status ->
@@ -439,6 +521,11 @@ class WorkOrdersViewModel(
                                 WorkOrderInputField.WORK_ORDER
                             } else {
                                 WorkOrderInputField.EMPLOYEE
+                            },
+                            isAssemblyLoading = if (activeWorkOrder != null) {
+                                false
+                            } else {
+                                it.isAssemblyLoading
                             }
                         )
                     }
@@ -446,6 +533,7 @@ class WorkOrdersViewModel(
                     if (shouldPromptForWorkOrder) {
                         showMessage("Escanee el assembly number")
                     }
+                    shouldAttemptClockIn = true
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -458,6 +546,9 @@ class WorkOrdersViewModel(
                 }
             )
             setLoading(false)
+            if (shouldAttemptClockIn) {
+                attemptAutoClockIn()
+            }
         }
     }
 
@@ -476,7 +567,9 @@ class WorkOrdersViewModel(
                             WorkOrderInputField.WORK_ORDER
                         } else {
                             WorkOrderInputField.EMPLOYEE
-                        }
+                        },
+                        scannedWorkOrder = null,
+                        isAssemblyLoading = false
                     )
                 }
                 startWorkOrderTimeout()
@@ -518,6 +611,8 @@ class WorkOrdersViewModel(
     private fun resetToEmployeeStep() {
         cancelWorkOrderTimeout()
         saveEmployeeJob?.cancel()
+        workOrderDetailsJob?.cancel()
+        workOrderDetailsJob = null
         _uiState.update {
             it.copy(
                 employeeId = "",
@@ -527,7 +622,9 @@ class WorkOrdersViewModel(
                 userStatus = null,
                 activeField = WorkOrderInputField.EMPLOYEE,
                 clockOutQuantity = "",
-                clockOutStatus = ClockOutStatus.COMPLETE
+                clockOutStatus = ClockOutStatus.COMPLETE,
+                scannedWorkOrder = null,
+                isAssemblyLoading = false
             )
         }
     }
