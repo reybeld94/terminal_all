@@ -9,6 +9,7 @@ import com.example.terminal.data.network.ClockOutStatus
 import com.example.terminal.data.repository.UserStatus
 import com.example.terminal.data.repository.WorkOrdersRepository
 import com.example.terminal.di.AppContainer
+import java.util.Locale
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +80,41 @@ class WorkOrdersViewModel(
 
     fun onEmployeeCardDismissed() {
         resetToEmployeeStep()
+    }
+
+    fun onBarcodeScanned(rawCode: String) {
+        if (_uiState.value.isLoading) {
+            return
+        }
+
+        val trimmed = rawCode.trim()
+        if (trimmed.isEmpty()) {
+            return
+        }
+
+        val uppercase = trimmed.uppercase(Locale.getDefault())
+        val handled = when {
+            uppercase.length > 1 && uppercase.startsWith('A') -> {
+                val digits = uppercase.drop(1)
+                if (digits.isNotEmpty() && digits.all(Char::isDigit)) {
+                    handleAssemblyScan(digits)
+                    true
+                } else {
+                    false
+                }
+            }
+
+            trimmed.all(Char::isDigit) -> {
+                handleEmployeeScan(trimmed)
+                true
+            }
+
+            else -> false
+        }
+
+        if (!handled) {
+            showMessage("Código de barras no reconocido")
+        }
     }
 
     fun setDigit(digit: String) {
@@ -308,6 +344,27 @@ class WorkOrdersViewModel(
         _uiState.update { it.copy(snackbarMessage = null) }
     }
 
+    private fun handleEmployeeScan(employeeCode: String) {
+        updateEmployeeId(employeeCode)
+        validateEmployee()
+    }
+
+    private fun handleAssemblyScan(workOrderCode: String) {
+        updateWorkOrderId(workOrderCode)
+        val isEmployeeValidated = _uiState.value.isEmployeeValidated
+        _uiState.update { current ->
+            val nextField = if (isEmployeeValidated) {
+                WorkOrderInputField.WORK_ORDER
+            } else {
+                WorkOrderInputField.EMPLOYEE
+            }
+            current.copy(activeField = nextField)
+        }
+        if (!isEmployeeValidated) {
+            showMessage("Assembly escaneado. Escanee su usuario para continuar")
+        }
+    }
+
     private fun updateEmployeeId(value: String) {
         cancelWorkOrderTimeout()
         _uiState.update {
@@ -369,6 +426,8 @@ class WorkOrdersViewModel(
             result.fold(
                 onSuccess = { status ->
                     val activeWorkOrder = status.activeWorkOrder
+                    val shouldPromptForWorkOrder = activeWorkOrder == null &&
+                        _uiState.value.workOrderId.isBlank()
                     _uiState.update {
                         it.copy(
                             isEmployeeValidated = true,
@@ -384,6 +443,9 @@ class WorkOrdersViewModel(
                         )
                     }
                     startWorkOrderTimeout()
+                    if (shouldPromptForWorkOrder) {
+                        showMessage("Escanee el assembly number")
+                    }
                 },
                 onFailure = { error ->
                     _uiState.update {
