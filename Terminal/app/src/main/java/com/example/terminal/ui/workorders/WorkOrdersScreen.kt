@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -53,6 +52,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusable
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,8 +62,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.view.KeyEvent as AndroidKeyEvent
 import com.example.terminal.data.repository.UserStatus
 import com.example.terminal.ui.theme.TerminalBackgroundBottom
 import com.example.terminal.ui.theme.TerminalBackgroundTop
@@ -88,12 +94,24 @@ fun WorkOrdersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val focusRequester = remember { FocusRequester() }
+    var barcodeBuffer by remember { mutableStateOf("") }
 
     LaunchedEffect(uiState.snackbarMessage) {
         val message = uiState.snackbarMessage
         if (!message.isNullOrBlank()) {
             snackbarHostState.showSnackbar(message)
             viewModel.dismissSnackbar()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    LaunchedEffect(uiState.isLoading, uiState.showClockOutDialog) {
+        if (!uiState.isLoading && !uiState.showClockOutDialog) {
+            focusRequester.requestFocus()
         }
     }
 
@@ -109,6 +127,66 @@ fun WorkOrdersScreen(
                     )
                 )
                 .padding(paddingValues)
+                .focusRequester(focusRequester)
+                .focusable()
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyUp) {
+                        return@onPreviewKeyEvent false
+                    }
+
+                    when (event.key) {
+                        Key.Enter, Key.NumPadEnter -> {
+                            val scanned = barcodeBuffer.trim()
+                            barcodeBuffer = ""
+                            if (scanned.isNotEmpty()) {
+                                viewModel.onBarcodeScanned(scanned)
+                                true
+                            } else {
+                                viewModel.enter()
+                                true
+                            }
+                        }
+
+                        Key.Backspace -> {
+                            if (barcodeBuffer.isNotEmpty()) {
+                                barcodeBuffer = barcodeBuffer.dropLast(1)
+                                true
+                            } else {
+                                viewModel.clear()
+                                true
+                            }
+                        }
+
+                        else -> {
+                            val unicodeChar = event.nativeKeyEvent?.unicodeChar ?: 0
+                            if (unicodeChar != 0) {
+                                val char = unicodeChar.toChar()
+                                if (!char.isWhitespace()) {
+                                    barcodeBuffer += char
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                when (event.nativeKeyEvent?.keyCode) {
+                                    AndroidKeyEvent.KEYCODE_ENTER,
+                                    AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                                        val scanned = barcodeBuffer.trim()
+                                        barcodeBuffer = ""
+                                        if (scanned.isNotEmpty()) {
+                                            viewModel.onBarcodeScanned(scanned)
+                                        } else {
+                                            viewModel.enter()
+                                        }
+                                        true
+                                    }
+
+                                    else -> false
+                                }
+                            }
+                        }
+                    }
+                }
         ) {
             Row(
                 modifier = Modifier
