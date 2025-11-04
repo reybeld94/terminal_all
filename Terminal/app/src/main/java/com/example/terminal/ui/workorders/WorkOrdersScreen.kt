@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +80,9 @@ import com.example.terminal.ui.theme.TerminalKeypadBackground
 import com.example.terminal.ui.theme.TerminalKeypadButton
 import com.example.terminal.ui.theme.TerminalKeypadClear
 import com.example.terminal.ui.theme.TerminalKeypadEnter
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
@@ -88,6 +91,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+
+private val AutoScanRapidKeyInterval: Duration = Duration.ofMillis(40)
+private const val AutoScanIdleDelayMillis: Long = 120
+private const val AutoScanMinRapidKeys: Int = 4
 
 @Composable
 fun WorkOrdersScreen(
@@ -98,7 +105,12 @@ fun WorkOrdersScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusRequester = remember { FocusRequester() }
+    val coroutineScope = rememberCoroutineScope()
     var barcodeBuffer by remember { mutableStateOf("") }
+    var lastRapidKeyTimestamp by remember { mutableStateOf<Instant?>(null) }
+    var autoScanJob by remember { mutableStateOf<Job?>(null) }
+    var autoScanDetected by remember { mutableStateOf(false) }
+    var rapidKeyCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(uiState.snackbarMessage) {
         val message = uiState.snackbarMessage
@@ -139,6 +151,12 @@ fun WorkOrdersScreen(
 
                     when (event.key) {
                         Key.Enter, Key.NumPadEnter -> {
+                            autoScanJob?.cancel()
+                            autoScanJob = null
+                            autoScanDetected = false
+                            rapidKeyCount = 0
+                            lastRapidKeyTimestamp = null
+
                             val scanned = barcodeBuffer.trim()
                             barcodeBuffer = ""
                             if (scanned.isNotEmpty()) {
@@ -153,8 +171,20 @@ fun WorkOrdersScreen(
                         Key.Backspace -> {
                             if (barcodeBuffer.isNotEmpty()) {
                                 barcodeBuffer = barcodeBuffer.dropLast(1)
+                                autoScanJob?.cancel()
+                                autoScanJob = null
+                                if (barcodeBuffer.isEmpty()) {
+                                    autoScanDetected = false
+                                    rapidKeyCount = 0
+                                    lastRapidKeyTimestamp = null
+                                }
                                 true
                             } else {
+                                autoScanJob?.cancel()
+                                autoScanJob = null
+                                autoScanDetected = false
+                                rapidKeyCount = 0
+                                lastRapidKeyTimestamp = null
                                 viewModel.clear()
                                 true
                             }
@@ -165,7 +195,48 @@ fun WorkOrdersScreen(
                             if (unicodeChar != null && unicodeChar != 0) {
                                 val char = unicodeChar.toChar()
                                 if (!char.isWhitespace()) {
+                                    val now = Instant.now()
+                                    val isRapidKey = lastRapidKeyTimestamp?.let { previous ->
+                                        Duration.between(previous, now) <= AutoScanRapidKeyInterval
+                                    } ?: false
+
+                                    rapidKeyCount = if (isRapidKey) {
+                                        rapidKeyCount + 1
+                                    } else {
+                                        1
+                                    }
+
+                                    if (rapidKeyCount >= AutoScanMinRapidKeys) {
+                                        autoScanDetected = true
+                                    }
+
+                                    lastRapidKeyTimestamp = now
                                     barcodeBuffer += char
+
+                                    autoScanJob?.cancel()
+                                    autoScanJob = coroutineScope.launch {
+                                        delay(AutoScanIdleDelayMillis)
+                                        val shouldScan = autoScanDetected
+                                        if (shouldScan) {
+                                            val scanned = barcodeBuffer.trim()
+                                            if (scanned.isNotEmpty()) {
+                                                barcodeBuffer = ""
+                                                autoScanDetected = false
+                                                rapidKeyCount = 0
+                                                lastRapidKeyTimestamp = null
+                                                viewModel.onBarcodeScanned(scanned)
+                                            } else {
+                                                autoScanDetected = false
+                                                rapidKeyCount = 0
+                                                lastRapidKeyTimestamp = null
+                                            }
+                                        } else {
+                                            autoScanDetected = false
+                                            lastRapidKeyTimestamp = null
+                                            rapidKeyCount = 0
+                                        }
+                                        autoScanJob = null
+                                    }
                                     true
                                 } else {
                                     false
