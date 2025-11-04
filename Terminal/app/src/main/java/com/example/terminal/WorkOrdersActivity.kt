@@ -1,6 +1,7 @@
 package com.example.terminal
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -15,14 +16,18 @@ class WorkOrdersActivity : AppCompatActivity() {
     private val workOrderBuilder = StringBuilder()
     private var activeTarget = InputTarget.EMPLOYEE
 
+    private lateinit var employeeValue: TextView
+    private lateinit var workOrderValue: TextView
+    private lateinit var activeInput: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_work_orders)
         window.enterImmersiveMode()
 
-        val employeeValue = findViewById<TextView>(R.id.textEmployeeValue)
-        val workOrderValue = findViewById<TextView>(R.id.textWorkOrderValue)
-        val activeInput = findViewById<TextView>(R.id.textActiveInput)
+        employeeValue = findViewById(R.id.textEmployeeValue)
+        workOrderValue = findViewById(R.id.textWorkOrderValue)
+        activeInput = findViewById(R.id.textActiveInput)
 
         val digitButtons = mapOf(
             R.id.buttonKey0 to "0",
@@ -37,30 +42,6 @@ class WorkOrdersActivity : AppCompatActivity() {
             R.id.buttonKey9 to "9"
         )
 
-        val updateDisplays = {
-            employeeValue.text = if (employeeBuilder.isEmpty()) {
-                getString(R.string.default_input_placeholder)
-            } else {
-                employeeBuilder.toString()
-            }
-
-            workOrderValue.text = if (workOrderBuilder.isEmpty()) {
-                getString(R.string.default_input_placeholder)
-            } else {
-                workOrderBuilder.toString()
-            }
-        }
-
-        val updateActiveIndicator = {
-            activeInput.text = when (activeTarget) {
-                InputTarget.EMPLOYEE -> getString(R.string.work_orders_active_employee)
-                InputTarget.WORK_ORDER -> getString(R.string.work_orders_active_work_order)
-            }
-
-            employeeValue.alpha = if (activeTarget == InputTarget.EMPLOYEE) 1f else 0.6f
-            workOrderValue.alpha = if (activeTarget == InputTarget.WORK_ORDER) 1f else 0.6f
-        }
-
         employeeValue.setOnClickListener {
             activeTarget = InputTarget.EMPLOYEE
             updateActiveIndicator()
@@ -73,26 +54,16 @@ class WorkOrdersActivity : AppCompatActivity() {
 
         digitButtons.forEach { (buttonId, value) ->
             findViewById<Button>(buttonId).setOnClickListener {
-                val builder = if (activeTarget == InputTarget.EMPLOYEE) employeeBuilder else workOrderBuilder
-                builder.append(value)
-                updateDisplays()
+                appendCharacters(value)
             }
         }
 
         findViewById<Button>(R.id.buttonClear).setOnClickListener {
-            val builder = if (activeTarget == InputTarget.EMPLOYEE) employeeBuilder else workOrderBuilder
-            if (builder.isNotEmpty()) {
-                builder.deleteCharAt(builder.length - 1)
-                updateDisplays()
-            }
+            removeLastCharacter()
         }
 
         findViewById<Button>(R.id.buttonEnter).setOnClickListener {
-            activeTarget = when (activeTarget) {
-                InputTarget.EMPLOYEE -> InputTarget.WORK_ORDER
-                InputTarget.WORK_ORDER -> InputTarget.EMPLOYEE
-            }
-            updateActiveIndicator()
+            toggleActiveTarget()
         }
 
         findViewById<Button>(R.id.buttonClockInWo).setOnClickListener {
@@ -112,6 +83,92 @@ class WorkOrdersActivity : AppCompatActivity() {
         if (hasFocus) {
             window.enterImmersiveMode()
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_MULTIPLE && event.keyCode == KeyEvent.KEYCODE_UNKNOWN) {
+            val characters = event.characters
+            if (!characters.isNullOrEmpty()) {
+                val digitsOnly = characters.filter { it.isDigit() }
+                if (digitsOnly.isNotEmpty()) {
+                    appendCharacters(digitsOnly)
+                    return true
+                }
+            }
+        }
+
+        if (event.action == KeyEvent.ACTION_UP) {
+            when (event.keyCode) {
+                in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9,
+                in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9 -> {
+                    val unicodeChar = event.unicodeChar
+                    if (unicodeChar != 0 && unicodeChar.toChar().isDigit()) {
+                        appendCharacters(unicodeChar.toChar().toString())
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> {
+                    removeLastCharacter()
+                    return true
+                }
+                KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                    toggleActiveTarget()
+                    return true
+                }
+            }
+        }
+
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun currentBuilder(): StringBuilder {
+        return if (activeTarget == InputTarget.EMPLOYEE) employeeBuilder else workOrderBuilder
+    }
+
+    private fun appendCharacters(value: CharSequence) {
+        if (value.isEmpty()) return
+        currentBuilder().append(value)
+        updateDisplays()
+    }
+
+    private fun removeLastCharacter() {
+        val builder = currentBuilder()
+        if (builder.isNotEmpty()) {
+            builder.deleteCharAt(builder.length - 1)
+            updateDisplays()
+        }
+    }
+
+    private fun toggleActiveTarget() {
+        activeTarget = when (activeTarget) {
+            InputTarget.EMPLOYEE -> InputTarget.WORK_ORDER
+            InputTarget.WORK_ORDER -> InputTarget.EMPLOYEE
+        }
+        updateActiveIndicator()
+    }
+
+    private fun updateDisplays() {
+        employeeValue.text = if (employeeBuilder.isEmpty()) {
+            getString(R.string.default_input_placeholder)
+        } else {
+            employeeBuilder.toString()
+        }
+
+        workOrderValue.text = if (workOrderBuilder.isEmpty()) {
+            getString(R.string.default_input_placeholder)
+        } else {
+            workOrderBuilder.toString()
+        }
+    }
+
+    private fun updateActiveIndicator() {
+        activeInput.text = when (activeTarget) {
+            InputTarget.EMPLOYEE -> getString(R.string.work_orders_active_employee)
+            InputTarget.WORK_ORDER -> getString(R.string.work_orders_active_work_order)
+        }
+
+        employeeValue.alpha = if (activeTarget == InputTarget.EMPLOYEE) 1f else 0.6f
+        workOrderValue.alpha = if (activeTarget == InputTarget.WORK_ORDER) 1f else 0.6f
     }
 
     private fun handleClockAction(clockIn: Boolean) {
