@@ -297,6 +297,7 @@ fun WorkOrdersScreen(
     }
 }
 
+
 @Composable
 private fun WorkOrdersForm(
     modifier: Modifier = Modifier,
@@ -314,208 +315,298 @@ private fun WorkOrdersForm(
         !uiState.isLoading &&
         !hasActiveWorkOrder
     val isClockOutEnabled = uiState.isEmployeeValidated && hasActiveWorkOrder && !uiState.isLoading
-    val hasScannedAssembly = uiState.scannedWorkOrder != null
-    val employeeInstruction = if (hasScannedAssembly) {
-        "Scan your user ID to clock in to the scanned assembly."
-    } else {
-        "Enter your Employee ID and press Enter on the keypad to validate."
-    }
-    val workOrderInstruction = "Use the keypad to enter or scan the assembly number and press Enter to continue."
+    val shouldShowAssemblyAwaitingStep = !uiState.isEmployeeValidated && (
+        uiState.scannedWorkOrder != null ||
+            (uiState.isAssemblyLoading && uiState.workOrderId.isNotBlank())
+        )
     Column(
         modifier = modifier
             .fillMaxHeight()
             .padding(top = 24.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (!uiState.isEmployeeValidated) {
-            val scannedDetails = uiState.scannedWorkOrder
-            val subtitle = scannedDetails?.let { details ->
-                val detailParts = buildList {
-                    details.workOrderNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
-                    details.operationName?.takeIf { it.isNotBlank() }?.let { add(it) }
-                    details.partNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
-                }
-                val joinedDetails = detailParts.joinToString(separator = " • ")
-                val assemblyLabel = details.displayAssemblyNumber()
-                if (joinedDetails.isBlank()) {
-                    "Assembly $assemblyLabel"
-                } else {
-                    "Assembly $assemblyLabel • $joinedDetails"
-                }
-            }
-            StepHeading(
-                title = if (scannedDetails != null) {
-                    "Assembly scanned. Please scan your user ID"
-                } else {
-                    "Please enter or scan your user ID"
-                },
-                subtitle = subtitle,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            if (uiState.isAssemblyLoading && scannedDetails == null && uiState.workOrderId.isNotBlank()) {
-                AssemblyLoadingCard(
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-            scannedDetails?.let { details ->
-                ScannedWorkOrderCard(
-                    workOrder = details,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-            SelectableField(
-                label = "Employee #",
-                value = uiState.employeeId,
-                isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
-                onClick = onEmployeeClick,
-                enabled = !uiState.isLoading,
-                isError = uiState.employeeValidationError != null
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = employeeInstruction,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Normal
-                ),
-                color = TerminalHelperText,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (uiState.employeeValidationError != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = uiState.employeeValidationError,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                uiState.userStatus?.let { status ->
-                    EmployeeStatusCard(
-                        status = status,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClose = onEmployeeCardClose
-                    )
-                    Spacer(modifier = Modifier.height(28.dp))
-                }
-
-                Box(
+        when {
+            shouldShowAssemblyAwaitingStep -> {
+                AssemblyAwaitingEmployeeStep(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentAlignment = Alignment.Center
+                    uiState = uiState,
+                    onEmployeeClick = onEmployeeClick
+                )
+            }
+            !uiState.isEmployeeValidated -> {
+                EmployeePromptStep(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    uiState = uiState,
+                    onEmployeeClick = onEmployeeClick
+                )
+            }
+            else -> {
+                ValidatedEmployeeContent(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    uiState = uiState,
+                    onWorkOrderClick = onWorkOrderClick,
+                    onEmployeeCardClose = onEmployeeCardClose
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(34.dp)
                 ) {
-                    if (!hasActiveWorkOrder) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            if (uiState.isAssemblyLoading && uiState.scannedWorkOrder == null && uiState.workOrderId.isNotBlank()) {
-                                AssemblyLoadingCard(
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                            uiState.scannedWorkOrder?.let { details ->
-                                ScannedWorkOrderCard(
-                                    workOrder = details,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                            StepHeading(
-                                title = "Please enter or scan your assembly number",
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            SelectableField(
-                                label = "Assembly #",
-                                value = uiState.workOrderId,
-                                isActive = uiState.activeField == WorkOrderInputField.WORK_ORDER,
-                                onClick = onWorkOrderClick,
-                                enabled = uiState.isEmployeeValidated && !uiState.isLoading
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = workOrderInstruction,
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Normal
-                                ),
-                                color = TerminalHelperText,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    } else {
+                    Button(
+                        onClick = onClockIn,
+                        enabled = isClockInEnabled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary,
+                            disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
+                            disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
+                        )
+                    ) {
                         Text(
-                            text = "You are already clocked in on a work order. Please clock out before starting another.",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                            color = TerminalHelperText,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            text = "Clock IN WO",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onTertiary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Button(
+                        onClick = onClockOut,
+                        enabled = isClockOutEnabled,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                            disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.6f)
+                        )
+                    ) {
+                        Text(
+                            text = "Clock OUT WO",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onError,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(34.dp)
-            ) {
-                Button(
-                    onClick = onClockIn,
-                    enabled = isClockInEnabled,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary,
-                        contentColor = MaterialTheme.colorScheme.onTertiary,
-                        disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
-                        disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
-                    )
-                ) {
-                    Text(
-                        text = "Clock IN WO",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onTertiary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+        }
+    }
+}
 
-                Button(
-                    onClick = onClockOut,
-                    enabled = isClockOutEnabled,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(60.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                        disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
-                        disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.6f)
-                    )
+@Composable
+private fun AssemblyAwaitingEmployeeStep(
+    modifier: Modifier = Modifier,
+    uiState: WorkOrdersUiState,
+    onEmployeeClick: () -> Unit
+) {
+    val scannedDetails = uiState.scannedWorkOrder
+    val subtitle = scannedDetails?.let { details ->
+        val detailParts = buildList {
+            details.workOrderNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
+            details.operationName?.takeIf { it.isNotBlank() }?.let { add(it) }
+            details.partNumber?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+        val joinedDetails = detailParts.joinToString(separator = " • ")
+        val assemblyLabel = details.displayAssemblyNumber()
+        if (joinedDetails.isBlank()) {
+            "Assembly $assemblyLabel"
+        } else {
+            "Assembly $assemblyLabel • $joinedDetails"
+        }
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        StepHeading(
+            title = "Assembly scanned. Please scan your user ID",
+            subtitle = subtitle,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        if (uiState.isAssemblyLoading && scannedDetails == null && uiState.workOrderId.isNotBlank()) {
+            AssemblyLoadingCard(
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        scannedDetails?.let { details ->
+            ScannedWorkOrderCard(
+                workOrder = details,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        SelectableField(
+            label = "Employee #",
+            value = uiState.employeeId,
+            isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
+            onClick = onEmployeeClick,
+            enabled = !uiState.isLoading,
+            isError = uiState.employeeValidationError != null
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Scan your user ID to automatically clock in to this assembly.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            color = TerminalHelperText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (uiState.employeeValidationError != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.employeeValidationError,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmployeePromptStep(
+    modifier: Modifier = Modifier,
+    uiState: WorkOrdersUiState,
+    onEmployeeClick: () -> Unit
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        StepHeading(
+            title = "Please enter or scan your user ID",
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        SelectableField(
+            label = "Employee #",
+            value = uiState.employeeId,
+            isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
+            onClick = onEmployeeClick,
+            enabled = !uiState.isLoading,
+            isError = uiState.employeeValidationError != null
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Enter your Employee ID and press Enter on the keypad to validate.",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            color = TerminalHelperText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (uiState.employeeValidationError != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = uiState.employeeValidationError,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ValidatedEmployeeContent(
+    modifier: Modifier = Modifier,
+    uiState: WorkOrdersUiState,
+    onWorkOrderClick: () -> Unit,
+    onEmployeeCardClose: () -> Unit
+) {
+    val hasActiveWorkOrder = uiState.userStatus?.activeWorkOrder != null
+    val workOrderInstruction = "Use the keypad to enter or scan the assembly number and press Enter to continue."
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        uiState.userStatus?.let { status ->
+            EmployeeStatusCard(
+                status = status,
+                modifier = Modifier.fillMaxWidth(),
+                onClose = onEmployeeCardClose
+            )
+            Spacer(modifier = Modifier.height(28.dp))
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!hasActiveWorkOrder) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    if (uiState.isAssemblyLoading && uiState.scannedWorkOrder == null && uiState.workOrderId.isNotBlank()) {
+                        AssemblyLoadingCard(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    uiState.scannedWorkOrder?.let { details ->
+                        ScannedWorkOrderCard(
+                            workOrder = details,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    StepHeading(
+                        title = "Please enter or scan your assembly number",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    SelectableField(
+                        label = "Assembly #",
+                        value = uiState.workOrderId,
+                        isActive = uiState.activeField == WorkOrderInputField.WORK_ORDER,
+                        onClick = onWorkOrderClick,
+                        enabled = uiState.isEmployeeValidated && !uiState.isLoading
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = "Clock OUT WO",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onError,
-                        fontWeight = FontWeight.SemiBold
+                        text = workOrderInstruction,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = TerminalHelperText,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+            } else {
+                Text(
+                    text = "You are already clocked in on a work order. Please clock out before starting another.",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = TerminalHelperText,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
