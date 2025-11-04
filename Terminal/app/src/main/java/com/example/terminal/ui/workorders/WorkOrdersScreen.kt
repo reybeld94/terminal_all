@@ -63,14 +63,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.nativeKeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import android.view.KeyEvent as AndroidKeyEvent
 import com.example.terminal.data.repository.UserStatus
 import com.example.terminal.ui.theme.TerminalBackgroundBottom
 import com.example.terminal.ui.theme.TerminalBackgroundTop
@@ -161,8 +160,8 @@ fun WorkOrdersScreen(
                         }
 
                         else -> {
-                            val unicodeChar = event.nativeKeyEvent?.unicodeChar ?: 0
-                            if (unicodeChar != 0) {
+                            val unicodeChar = event.utf16CodePoint
+                            if (unicodeChar != null && unicodeChar != 0) {
                                 val char = unicodeChar.toChar()
                                 if (!char.isWhitespace()) {
                                     barcodeBuffer += char
@@ -171,21 +170,7 @@ fun WorkOrdersScreen(
                                     false
                                 }
                             } else {
-                                when (event.nativeKeyEvent?.keyCode) {
-                                    AndroidKeyEvent.KEYCODE_ENTER,
-                                    AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                                        val scanned = barcodeBuffer.trim()
-                                        barcodeBuffer = ""
-                                        if (scanned.isNotEmpty()) {
-                                            viewModel.onBarcodeScanned(scanned)
-                                        } else {
-                                            viewModel.enter()
-                                        }
-                                        true
-                                    }
-
-                                    else -> false
-                                }
+                                false
                             }
                         }
                     }
