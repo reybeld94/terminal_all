@@ -451,25 +451,43 @@ private fun AssemblyAwaitingEmployeeStep(
             Spacer(modifier = Modifier.height(24.dp))
         }
         Spacer(modifier = Modifier.weight(1f))
-        SelectableField(
-            label = "Employee #",
-            value = uiState.employeeId,
-            isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
-            onClick = onEmployeeClick,
-            enabled = !uiState.isLoading,
-            isError = uiState.employeeValidationError != null
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Scan your user ID to automatically clock in to this assembly.",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Normal
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ),
-            color = TerminalHelperText,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SelectableField(
+                    label = "Employee #",
+                    value = uiState.employeeId,
+                    isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
+                    onClick = onEmployeeClick,
+                    enabled = !uiState.isLoading,
+                    isError = uiState.employeeValidationError != null
+                )
+                Text(
+                    text = "Scan your user ID to automatically clock in to this assembly.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = TerminalHelperText,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
         if (uiState.employeeValidationError != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -1039,7 +1057,7 @@ private fun RowScope.WorkOrderGridItem(
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 18.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold
             ),
             color = MaterialTheme.colorScheme.onSurface,
