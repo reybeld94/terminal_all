@@ -450,47 +450,19 @@ private fun AssemblyAwaitingEmployeeStep(
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
-        Spacer(modifier = Modifier.weight(1f))
-        SelectableField(
+        ScanPromptCard(
             label = "Employee #",
             value = uiState.employeeId,
             isActive = uiState.activeField == WorkOrderInputField.EMPLOYEE,
             onClick = onEmployeeClick,
             enabled = !uiState.isLoading,
-            isError = uiState.employeeValidationError != null
+            supportingText = "Scan your user ID to automatically clock in to this assembly.",
+            supportingTextFontSize = 15.sp,
+            supportingTextFontWeight = FontWeight.Medium,
+            isError = uiState.employeeValidationError != null,
+            errorText = uiState.employeeValidationError
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
-        ) {
-            Text(
-                text = "Scan your user ID to automatically clock in to this assembly.",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                ),
-                color = TerminalHelperText,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
-            )
-        }
-        if (uiState.employeeValidationError != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = uiState.employeeValidationError,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -592,24 +564,15 @@ private fun ValidatedEmployeeContent(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    SelectableField(
+                    ScanPromptCard(
                         label = "Assembly #",
                         value = uiState.workOrderId,
                         isActive = uiState.activeField == WorkOrderInputField.WORK_ORDER,
                         onClick = onWorkOrderClick,
-                        enabled = uiState.isEmployeeValidated && !uiState.isLoading
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = workOrderInstruction,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        color = TerminalHelperText,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        enabled = uiState.isEmployeeValidated && !uiState.isLoading,
+                        supportingText = workOrderInstruction,
+                        supportingTextFontSize = 16.sp,
+                        supportingTextFontWeight = FontWeight.Normal
                     )
                 }
             } else {
@@ -726,6 +689,69 @@ private fun SelectableField(
             disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
     )
+}
+
+@Composable
+private fun ScanPromptCard(
+    label: String,
+    value: String,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    supportingText: String,
+    supportingTextFontSize: TextUnit = 15.sp,
+    supportingTextFontWeight: FontWeight = FontWeight.Medium,
+    isError: Boolean = false,
+    errorText: String? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            SelectableField(
+                label = label,
+                value = value,
+                isActive = isActive,
+                onClick = onClick,
+                enabled = enabled,
+                isError = isError
+            )
+
+            Text(
+                text = supportingText,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = supportingTextFontSize,
+                    fontWeight = supportingTextFontWeight
+                ),
+                color = TerminalHelperText,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (errorText != null) {
+                Text(
+                    text = errorText,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
 }
 
 @Composable
