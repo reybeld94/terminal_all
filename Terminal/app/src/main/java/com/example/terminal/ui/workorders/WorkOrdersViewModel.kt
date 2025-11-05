@@ -368,6 +368,7 @@ class WorkOrdersViewModel(
         }
         if (!isEmployeeValidated) {
             showMessage("Assembly scanned. Please scan your user ID to continue.")
+            startWorkOrderTimeout()
         } else {
             attemptAutoClockIn()
         }
@@ -589,8 +590,12 @@ class WorkOrdersViewModel(
         workOrderTimeoutJob = viewModelScope.launch {
             delay(WORK_ORDER_TIMEOUT_MS)
             val shouldReset = _uiState.value.let { state ->
-                if (!state.isEmployeeValidated || state.isLoading || state.showClockOutDialog) {
+                if (state.isLoading || state.showClockOutDialog) {
                     false
+                } else if (!state.isEmployeeValidated) {
+                    state.workOrderId.isNotBlank() ||
+                        state.scannedWorkOrder != null ||
+                        state.isAssemblyLoading
                 } else {
                     val hasActiveWorkOrder = state.userStatus?.activeWorkOrder != null
                     if (hasActiveWorkOrder) {
