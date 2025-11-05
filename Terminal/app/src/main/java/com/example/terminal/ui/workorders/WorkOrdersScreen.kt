@@ -867,7 +867,7 @@ private fun EmployeeStatusCard(
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Cerrar tarjeta de empleado",
+                            contentDescription = "Close employee card",
                             tint = MaterialTheme.colorScheme.onTertiary
                         )
                     }

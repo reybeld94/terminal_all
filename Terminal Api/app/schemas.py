@@ -110,3 +110,27 @@ class UserStatusResponse(BaseModel):
                 return datetime.combine(date.today(), parsed_time)
 
         raise ValueError("Invalid clock_in_time value")
+
+
+class WorkOrderDetailsResponse(BaseModel):
+    work_order_assembly_id: int = Field(alias="workOrderAssemblyId")
+    work_order_number: Optional[str] = Field(default=None, alias="workOrderNumber")
+    work_order_assembly_number: Optional[str] = Field(
+        default=None, alias="workOrderAssemblyNumber"
+    )
+    part_number: Optional[str] = Field(default=None, alias="partNumber")
+    operation_code: Optional[str] = Field(default=None, alias="operationCode")
+    operation_name: Optional[str] = Field(default=None, alias="operationName")
+    description: Optional[str] = None
+    is_work_order_closed: bool = Field(alias="isWorkOrderClosed")
+    is_released: bool = Field(alias="isReleased")
+    is_assembly_closed: bool = Field(alias="isAssemblyClosed")
+
+    model_config = {"populate_by_name": True}
+
+    @field_validator("work_order_number", "work_order_assembly_number", mode="before")
+    @classmethod
+    def _coerce_optional_str(cls, value: object) -> Optional[str]:
+        if value is None:
+            return None
+        return str(value)

@@ -117,7 +117,7 @@ class WorkOrdersViewModel(
         }
 
         if (!handled) {
-            showMessage("Código de barras no reconocido")
+            showMessage("Unrecognized barcode")
         }
     }
 
@@ -185,22 +185,22 @@ class WorkOrdersViewModel(
         val userId = _uiState.value.userStatus?.userId
 
         if (!_uiState.value.isEmployeeValidated) {
-            showMessage("Valide el empleado antes de continuar")
+            showMessage("Validate the employee before continuing")
             return
         }
 
         if (employee.isEmpty() || workOrder.isEmpty()) {
-            showMessage("Employee # y Work Order # son requeridos")
+            showMessage("Employee ID and assembly number are required")
             return
         }
 
         if (!employee.isDigitsOnly() || !workOrder.isDigitsOnly()) {
-            showMessage("Ingrese valores numéricos válidos")
+            showMessage("Enter valid numeric values")
             return
         }
 
         if (userId == null) {
-            showMessage("No se pudo obtener el usuario. Valide nuevamente.")
+            showMessage("Unable to fetch the user. Please validate again.")
             return
         }
 
@@ -213,13 +213,13 @@ class WorkOrdersViewModel(
                 onSuccess = {
                     val refreshed = refreshUserStatus(employee)
                     if (refreshed) {
-                        showMessage("Clock In registrado correctamente")
+                        showMessage("Clock in recorded successfully")
                     } else {
-                        showMessage("Clock In registrado correctamente, pero no se pudo actualizar la información")
+                        showMessage("Clock in recorded successfully, but the information could not be refreshed")
                     }
                 },
                 onFailure = { error ->
-                    showMessage(error.message ?: "Error al registrar Clock In")
+                    showMessage(error.message ?: "Failed to register clock in")
                 }
             )
             setLoading(false)
@@ -233,20 +233,20 @@ class WorkOrdersViewModel(
         val activeWorkOrderId = state.userStatus?.activeWorkOrder?.workOrderCollectionId
 
         if (!state.isEmployeeValidated) {
-            showMessage("Valide el empleado antes de continuar")
+            showMessage("Validate the employee before continuing")
             return
         }
         if (employee.isEmpty()) {
-            showMessage("Employee # y Work Order # son requeridos")
+            showMessage("Employee ID and assembly number are required")
             return
         }
         if (activeWorkOrderId == null) {
             if (workOrder.isEmpty()) {
-                showMessage("Employee # y Work Order # son requeridos")
+                showMessage("Employee ID and assembly number are required")
                 return
             }
             if (!workOrder.isDigitsOnly()) {
-                showMessage("Ingrese valores numéricos válidos")
+                showMessage("Enter valid numeric values")
                 return
             }
         }
@@ -278,18 +278,18 @@ class WorkOrdersViewModel(
         val quantityText = state.clockOutQuantity
         val quantity = quantityText.toIntOrNull()
         if (quantity == null || quantity <= 0) {
-            showMessage("Ingrese una cantidad válida mayor a 0")
+            showMessage("Enter a valid quantity greater than 0")
             return
         }
 
         if (!employee.isDigitsOnly()) {
-            showMessage("Ingrese valores numéricos válidos")
+            showMessage("Enter valid numeric values")
             return
         }
 
         val workOrderId = activeWorkOrderId ?: workOrder.toIntOrNull()
         if (workOrderId == null) {
-            showMessage("Employee # y Work Order # son requeridos")
+            showMessage("Employee ID and assembly number are required")
             return
         }
 
@@ -321,10 +321,10 @@ class WorkOrdersViewModel(
                             clockOutStatus = ClockOutStatus.COMPLETE
                         )
                     }
-                    showMessage("Clock Out registrado correctamente")
+                    showMessage("Clock out recorded successfully")
                 },
                 onFailure = { error ->
-                    showMessage(error.message ?: "Error al registrar Clock Out")
+                    showMessage(error.message ?: "Failed to register clock out")
                 }
             )
             setLoading(false)
@@ -367,7 +367,7 @@ class WorkOrdersViewModel(
             current.copy(activeField = nextField)
         }
         if (!isEmployeeValidated) {
-            showMessage("Assembly escaneado. Escanee su usuario para continuar")
+            showMessage("Assembly scanned. Please scan your user ID to continue.")
         } else {
             attemptAutoClockIn()
         }
@@ -414,7 +414,7 @@ class WorkOrdersViewModel(
                             isAssemblyLoading = false
                         )
                     }
-                    showMessage(error.message ?: "No se pudo obtener la información del assembly")
+                    showMessage(error.message ?: "Unable to retrieve assembly information")
                 }
             )
         }
@@ -422,10 +422,13 @@ class WorkOrdersViewModel(
 
     private fun attemptAutoClockIn() {
         val state = _uiState.value
+        val assemblyReady = state.scannedWorkOrder?.let { details ->
+            !details.isWorkOrderClosed && details.isReleased && !details.isAssemblyClosed
+        } ?: false
         val canClockIn = state.isEmployeeValidated &&
             !state.isLoading &&
             !state.isAssemblyLoading &&
-            state.scannedWorkOrder != null &&
+            assemblyReady &&
             state.userStatus?.activeWorkOrder == null &&
             state.workOrderId.isDigitsOnly()
 
@@ -492,12 +495,12 @@ class WorkOrdersViewModel(
     private fun validateEmployee() {
         val employee = _uiState.value.employeeId.trim()
         if (employee.isEmpty()) {
-            showMessage("Ingrese el número de empleado")
+            showMessage("Enter the employee ID")
             return
         }
 
         if (!employee.isDigitsOnly()) {
-            showMessage("Ingrese un número de empleado válido")
+            showMessage("Enter a valid employee ID")
             return
         }
 
@@ -531,7 +534,7 @@ class WorkOrdersViewModel(
                     }
                     startWorkOrderTimeout()
                     if (shouldPromptForWorkOrder) {
-                        showMessage("Escanee el assembly number")
+                        showMessage("Scan the assembly number")
                     }
                     shouldAttemptClockIn = true
                 },

@@ -49,7 +49,10 @@ data class WorkOrderDetailsResponse(
     @SerializedName("partNumber") val partNumber: String?,
     @SerializedName("operationCode") val operationCode: String?,
     @SerializedName("operationName") val operationName: String?,
-    @SerializedName("description") val description: String?
+    @SerializedName("description") val description: String?,
+    @SerializedName("isWorkOrderClosed") val isWorkOrderClosed: Boolean,
+    @SerializedName("isReleased") val isReleased: Boolean,
+    @SerializedName("isAssemblyClosed") val isAssemblyClosed: Boolean
 )
 
 enum class ClockOutStatus(val isComplete: Boolean, val displayName: String) {

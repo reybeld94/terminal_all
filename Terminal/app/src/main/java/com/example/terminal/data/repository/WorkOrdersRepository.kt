@@ -33,7 +33,7 @@ class WorkOrdersRepository(
             if (response.isSuccessful) {
                 val body = response.body()
                 when (body) {
-                    null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
+                    null -> Result.failure(IllegalStateException("Empty response from server"))
                     else -> Result.success(body.toDomain())
                 }
             } else {
@@ -64,10 +64,10 @@ class WorkOrdersRepository(
             if (response.isSuccessful) {
                 val body = response.body()
                 when {
-                    body == null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
+                    body == null -> Result.failure(IllegalStateException("Empty response from server"))
                     !body.status.isSuccessStatus() -> {
                         val message = body.status?.takeIf { it.isNotBlank() }
-                            ?: "Operación de Clock In rechazada por el servidor"
+                            ?: "Clock in operation was rejected by the server"
                         Result.failure(IllegalStateException(message))
                     }
                     else -> Result.success(body)
@@ -108,10 +108,10 @@ class WorkOrdersRepository(
             if (response.isSuccessful) {
                 val body = response.body()
                 when {
-                    body == null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
+                    body == null -> Result.failure(IllegalStateException("Empty response from server"))
                     !body.status.isSuccessStatus() -> {
                         val message = body.status?.takeIf { it.isNotBlank() }
-                            ?: "Operación de Clock Out rechazada por el servidor"
+                            ?: "Clock out operation was rejected by the server"
                         Result.failure(IllegalStateException(message))
                     }
                     else -> Result.success(body)
@@ -135,16 +135,16 @@ class WorkOrdersRepository(
             if (response.isSuccessful) {
                 val body = response.body()
                 when (body) {
-                    null -> Result.failure(IllegalStateException("Respuesta vacía del servidor"))
+                    null -> Result.failure(IllegalStateException("Empty response from server"))
                     else -> Result.success(body.toDomain())
                 }
             } else {
                 val errorMessage = if (response.code() == 404) {
-                    "Assembly no encontrado"
+                    "Assembly not found"
                 } else {
                     parseError(
                         response.errorBody()?.string(),
-                        defaultMessage = "Error al obtener detalles del assembly"
+                        defaultMessage = "Failed to fetch assembly details"
                     )
                 }
                 Result.failure(IllegalStateException(errorMessage))
@@ -158,7 +158,7 @@ class WorkOrdersRepository(
         if (code == 404) {
             return "Wrong user"
         }
-        return parseError(errorBody, defaultMessage = "Error al validar usuario")
+        return parseError(errorBody, defaultMessage = "Error validating user")
     }
 
     private fun currentIsoDateTime(): String {
@@ -171,7 +171,7 @@ class WorkOrdersRepository(
         }
     }
 
-    private fun parseError(errorBody: String?, defaultMessage: String = "Error desconocido"): String {
+    private fun parseError(errorBody: String?, defaultMessage: String = "Unknown error"): String {
         if (errorBody.isNullOrBlank()) {
             return defaultMessage
         }
@@ -233,7 +233,10 @@ data class WorkOrderDetails(
     val partNumber: String?,
     val operationCode: String?,
     val operationName: String?,
-    val description: String?
+    val description: String?,
+    val isWorkOrderClosed: Boolean,
+    val isReleased: Boolean,
+    val isAssemblyClosed: Boolean
 )
 
 private fun UserStatusResponse.toDomain(): UserStatus {
@@ -275,7 +278,10 @@ private fun WorkOrderDetailsResponse.toDomain(): WorkOrderDetails {
         partNumber = partNumber,
         operationCode = operationCode,
         operationName = operationName,
-        description = description
+        description = description,
+        isWorkOrderClosed = isWorkOrderClosed,
+        isReleased = isReleased,
+        isAssemblyClosed = isAssemblyClosed
     )
 }
 
