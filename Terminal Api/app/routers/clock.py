@@ -39,6 +39,20 @@ def clock_in(payload: ClockInRequest) -> ClockInResponse:
 
     device_date = payload.device_date or datetime.utcnow()
 
+    log_json(
+        {
+            "level": "INFO",
+            "event": "clock_in.received",
+            "request_id": get_request_id(),
+            "payload": {
+                "work_order_assembly_id": payload.work_order_assembly_id,
+                "user_id": payload.user_id,
+                "division_fk": payload.division_fk,
+                "device_date": device_date,
+            },
+        }
+    )
+
     try:
         with closing(get_conn()) as conn:
             with conn.cursor(as_dict=True) as cursor:
@@ -98,9 +112,34 @@ def clock_in(payload: ClockInRequest) -> ClockInResponse:
                     (payload.user_id, payload.work_order_assembly_id),
                 )
                 work_order_row = cursor.fetchone()
-                work_order_collection_id = (
-                    work_order_row.get("WorkOrderCollectionPK") if work_order_row else None
-                )
+                if work_order_row:
+                    log_json(
+                        {
+                            "level": "INFO",
+                            "event": "clock_in.work_order_found",
+                            "request_id": get_request_id(),
+                            "work_order_collection_id": work_order_row.get(
+                                "WorkOrderCollectionPK"
+                            ),
+                            "raw_row": work_order_row,
+                        }
+                    )
+                    work_order_collection_id = work_order_row.get(
+                        "WorkOrderCollectionPK"
+                    )
+                else:
+                    log_json(
+                        {
+                            "level": "WARNING",
+                            "event": "clock_in.work_order_missing",
+                            "request_id": get_request_id(),
+                            "lookup_params": {
+                                "employee_fk": payload.user_id,
+                                "work_order_assembly_number": payload.work_order_assembly_id,
+                            },
+                        }
+                    )
+                    work_order_collection_id = None
 
                 conn.commit()
     except pymssql.Error as exc:  # pragma: no cover - requires live DB
