@@ -787,16 +787,8 @@ private fun ScannedWorkOrderCard(
 
             Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
-            if (!workOrder.description.isNullOrBlank()) {
-                Text(
-                    text = workOrder.description,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-            }
-
             WorkOrderDetailsGrid(
+                description = workOrder.description,
                 partNumber = workOrder.partNumber,
                 operationName = workOrder.operationName,
                 operationCode = workOrder.operationCode
@@ -890,6 +882,7 @@ private fun EmployeeStatusCard(
                         Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
 
                         WorkOrderDetailsGrid(
+                            description = null,
                             partNumber = workOrder.partNumber,
                             operationName = workOrder.operationName,
                             operationCode = workOrder.operationCode
@@ -988,6 +981,7 @@ private fun ClockInInfo(clockInTime: String?) {
 
 @Composable
 private fun WorkOrderDetailsGrid(
+    description: String?,
     partNumber: String?,
     operationName: String?,
     operationCode: String?
@@ -996,9 +990,18 @@ private fun WorkOrderDetailsGrid(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        val primaryLabel = if (!description.isNullOrBlank()) {
+            "Description"
+        } else {
+            "Part Number"
+        }
+        val primaryValue = description?.takeIf { it.isNotBlank() }
+            ?: partNumber?.takeIf { it.isNotBlank() }
+            ?: "--"
+
         WorkOrderGridItem(
-            label = "Part Number",
-            value = partNumber?.takeIf { it.isNotBlank() } ?: "--"
+            label = primaryLabel,
+            value = primaryValue
         )
 
         val operationValue = when {
