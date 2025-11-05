@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import Message
 
-from .routers import clock, user
+from .routers import clock, user, work_order
 from .logging_utils import log_json, reset_request_id, set_request_id
 
 
@@ -165,6 +165,7 @@ def create_app() -> FastAPI:
     application.add_middleware(RequestIdMiddleware)
     application.include_router(clock.router)
     application.include_router(user.router)
+    application.include_router(work_order.router)
 
     return application
 

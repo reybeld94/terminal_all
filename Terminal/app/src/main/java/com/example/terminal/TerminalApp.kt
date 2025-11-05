@@ -218,17 +218,17 @@ private fun ClockTabContent(
             )
             Spacer(modifier = Modifier.height(24.dp))
             DisplayValue(
-                label = "Empleado",
+                label = "Employee",
                 value = inputValue.ifEmpty { lastEmployee?.toString().orEmpty() }
             )
             Spacer(modifier = Modifier.height(8.dp))
             val statusText = lastEmployee?.let { employee ->
                 if (loginStates[employee] == true) "Clocked In" else "Clocked Out"
             } ?: "--"
-            DisplayValue(label = "Estado", value = statusText)
+            DisplayValue(label = "Status", value = statusText)
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Ingrese el número de empleado y presione Enter para clock in/out.",
+                text = "Enter the employee number and press Enter to clock in or out.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -245,7 +245,7 @@ private fun ClockTabContent(
             onEnter = {
                 val employeeNumber = inputValue.toIntOrNull()
                 if (employeeNumber == null) {
-                    Toast.makeText(context, "Ingrese un número de empleado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Enter a valid employee number", Toast.LENGTH_SHORT).show()
                 } else {
                     val isLoggedIn = loginStates[employeeNumber] == true
                     if (isLoggedIn) {
@@ -277,24 +277,24 @@ private fun ServerSettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Configuración del servidor") },
+        title = { Text(text = "Server settings") },
         text = {
             Column {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = "Configura la dirección del servidor utilizada para las peticiones.",
+                        text = "Configure the server address used for requests.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
                         value = address,
                         onValueChange = { address = it },
-                        label = { Text(text = "Dirección del servidor") },
+                        label = { Text(text = "Server address") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = "Volumen del beep: $volumePercentage%",
+                            text = "Beep volume: $volumePercentage%",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Slider(
@@ -311,12 +311,12 @@ private fun ServerSettingsDialog(
                 onClick = { onSave(address.trim(), volume) },
                 enabled = isValid
             ) {
-                Text(text = "Guardar")
+                Text(text = "Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "Cancelar")
+                Text(text = "Cancel")
             }
         }
     )
@@ -335,8 +335,8 @@ private fun IssueMaterialsTabContent(
     var currentField by rememberSaveable { mutableStateOf(MaterialInputField.EMPLOYEE) }
 
     val instructionText = when (currentField) {
-        MaterialInputField.EMPLOYEE -> "Ingrese o escanee el número de empleado y presione Enter."
-        MaterialInputField.MATERIAL -> "Ingrese o escanee el código de material y presione Enter."
+        MaterialInputField.EMPLOYEE -> "Enter or scan the employee number and press Enter."
+        MaterialInputField.MATERIAL -> "Enter or scan the material code and press Enter."
     }
 
     Row(modifier = modifier.fillMaxSize()) {
@@ -369,11 +369,11 @@ private fun IssueMaterialsTabContent(
                     val employee = employeeNumber
                     val material = materialCode
                     if (employee == null) {
-                        Toast.makeText(context, "Ingrese un número de empleado", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Enter a valid employee number", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     if (material.isNullOrEmpty()) {
-                        Toast.makeText(context, "Ingrese un código de material", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Enter a valid material code", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
@@ -420,7 +420,7 @@ private fun IssueMaterialsTabContent(
                         if (employee == null) {
                             Toast.makeText(
                                 context,
-                                "Ingrese un número de empleado",
+                                "Enter a valid employee number",
                                 Toast.LENGTH_SHORT
                             ).show()
                         } else {
@@ -434,7 +434,7 @@ private fun IssueMaterialsTabContent(
                         if (inputValue.isEmpty()) {
                             Toast.makeText(
                                 context,
-                                "Ingrese un código de material",
+                                "Enter a valid material code",
                                 Toast.LENGTH_SHORT
                             ).show()
                         } else {
@@ -457,7 +457,7 @@ private enum class MaterialInputField {
 @Composable
 private fun DisplayValue(label: String, value: String) {
     val displayValue = value.ifEmpty { "--" }
-    val isEmployeeLabel = label.equals("Empleado", ignoreCase = true) || label.equals("Employee", ignoreCase = true)
+    val isEmployeeLabel = label.equals("Employee", ignoreCase = true)
 
     if (isEmployeeLabel) {
         val avatarText = displayValue
