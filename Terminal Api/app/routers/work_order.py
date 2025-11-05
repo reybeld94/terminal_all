@@ -21,9 +21,19 @@ SELECT
     wo.WorkOrderNumber,
     woa.SequenceNumber AS WorkOrderAssemblyNumber,
     woa.PartNumber,
+    COALESCE(
+      NULLIF(woa.HardwareDescription,''),
+      NULLIF(woa.MaterialDescription,''),
+      NULLIF(woa.OutsideProcessingDescription,''),
+      NULLIF(i.Description,''),
+      NULLIF(ri.Description,''),
+      NULLIF(woa.PartNumber,''),
+      NULLIF(i.PartNumber,''),
+      NULLIF(ri.PartNumber,'')
+    ) AS DescriptionResolved,
+    COALESCE(NULLIF(i.PartNumber,''), NULLIF(ri.PartNumber,''), NULLIF(woa.PartNumber,'')) AS PartNumberResolved,
     op.Code AS OperationCode,
     op.Name AS OperationName,
-    woa.HardwareDescription AS Description,
     CASE
       WHEN woa.QuantityToFabricate IS NOT NULL AND woa.QuantityIssued >= woa.QuantityToFabricate THEN CAST(1 AS bit)
       ELSE CAST(0 AS bit)
@@ -33,6 +43,9 @@ SELECT
 FROM dbo.WorkOrderAssembly AS woa
 INNER JOIN dbo.WorkOrder AS wo ON wo.WorkOrderPK = woa.WorkOrderFK
 LEFT JOIN dbo.Operation AS op ON op.OperationPK = woa.OperationFK
+LEFT JOIN dbo.Item AS i ON i.ItemPK = woa.ItemFK
+LEFT JOIN dbo.Router AS r ON r.RouterPK = woa.RouterFK
+LEFT JOIN dbo.Item AS ri ON ri.ItemPK = r.ItemFK
 WHERE woa.WorkOrderAssemblyPK = %s
 """
 
@@ -140,10 +153,10 @@ def get_work_order_details(assembly_id: int) -> WorkOrderDetailsResponse:
         work_order_assembly_id=int(row.get("WorkOrderAssemblyId") or assembly_id),
         work_order_number=row.get("WorkOrderNumber"),
         work_order_assembly_number=row.get("WorkOrderAssemblyNumber"),
-        part_number=row.get("PartNumber"),
+        part_number=row.get("PartNumberResolved") or row.get("PartNumber"),
         operation_code=row.get("OperationCode"),
         operation_name=row.get("OperationName"),
-        description=row.get("Description"),
+        description=row.get("DescriptionResolved"),
         is_work_order_closed=_to_bool(row.get("IsWorkOrderClosed")),
         is_released=_to_bool(row.get("IsReleased")),
         is_assembly_closed=_to_bool(row.get("IsAssemblyClosed")),

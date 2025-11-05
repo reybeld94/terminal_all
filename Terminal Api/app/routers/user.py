@@ -33,6 +33,17 @@ SELECT TOP (1)
     w.WorkOrderAssemblyNumber,
     w.TimeOn,
     wo.PartNumber,
+    COALESCE(
+      NULLIF(wa.HardwareDescription,''),
+      NULLIF(wa.MaterialDescription,''),
+      NULLIF(wa.OutsideProcessingDescription,''),
+      NULLIF(i.Description,''),
+      NULLIF(ri.Description,''),
+      NULLIF(wa.PartNumber,''),
+      NULLIF(i.PartNumber,''),
+      NULLIF(ri.PartNumber,'')
+    ) AS DescriptionResolved,
+    COALESCE(NULLIF(i.PartNumber,''), NULLIF(ri.PartNumber,''), NULLIF(wa.PartNumber,'')) AS PartNumberResolved,
     op.Code AS OperationCode,
     op.Name AS OperationName
 FROM dbo.WorkOrderCollection AS w
@@ -41,6 +52,12 @@ LEFT JOIN dbo.WorkOrder AS wo
 LEFT JOIN dbo.WorkOrderAssembly AS wa
        ON wa.WorkOrderFK = wo.WorkOrderPK
       AND wa.SequenceNumber = w.WorkOrderAssemblyNumber
+LEFT JOIN dbo.Item AS i
+       ON i.ItemPK = wa.ItemFK
+LEFT JOIN dbo.Router AS r
+       ON r.RouterPK = wa.RouterFK
+LEFT JOIN dbo.Item AS ri
+       ON ri.ItemPK = r.ItemFK
 LEFT JOIN dbo.Operation AS op
        ON op.OperationPK = wa.OperationFK
 WHERE w.EmployeeFK = %s
@@ -113,7 +130,10 @@ def get_user_status(employee_id: str) -> UserStatusResponse:
             work_order_row, "WorkOrderAssemblyNumber"
         ),
         clock_in_time=_safe_get(work_order_row, "TimeOn"),
-        part_number=_safe_get(work_order_row, "PartNumber"),
+        part_number=(
+            _safe_get(work_order_row, "PartNumberResolved")
+            or _safe_get(work_order_row, "PartNumber")
+        ),
         operation_code=_safe_get(work_order_row, "OperationCode"),
         operation_name=_safe_get(work_order_row, "OperationName"),
     )
