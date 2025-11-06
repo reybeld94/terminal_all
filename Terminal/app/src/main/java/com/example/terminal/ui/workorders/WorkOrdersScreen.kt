@@ -30,6 +30,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,10 +58,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -75,6 +80,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.terminal.data.network.ClockOutStatus
 import com.example.terminal.data.repository.UserStatus
 import com.example.terminal.data.repository.WorkOrderDetails
 import com.example.terminal.ui.theme.TerminalBackgroundBottom
@@ -141,8 +147,8 @@ fun WorkOrdersScreen(
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(uiState.isLoading, uiState.showClockOutDialog) {
-        if (!uiState.isLoading && !uiState.showClockOutDialog) {
+    LaunchedEffect(uiState.isLoading, uiState.showClockOutForm) {
+        if (!uiState.isLoading && !uiState.showClockOutForm) {
             focusRequester.requestFocus()
         }
     }
@@ -278,6 +284,10 @@ fun WorkOrdersScreen(
                     onEmployeeCardClose = viewModel::onEmployeeCardDismissed,
                     onClockIn = viewModel::onClockIn,
                     onClockOut = viewModel::onClockOutClick,
+                    onClockOutQuantityChange = viewModel::onClockOutQuantityChange,
+                    onClockOutStatusSelected = viewModel::onClockOutStatusSelected,
+                    onClockOutConfirm = viewModel::onClockOutConfirm,
+                    onClockOutCancel = viewModel::hideClockOutForm,
                     validationMessage = validationMessage,
                     isValidationMessageVisible = isValidationMessageVisible
                 )
@@ -289,21 +299,6 @@ fun WorkOrdersScreen(
                     onNumberClick = viewModel::setDigit,
                     onClear = viewModel::clear,
                     onEnter = viewModel::enter
-                )
-            }
-
-            if (uiState.showClockOutDialog) {
-                ClockOutDialog(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.6f)
-                        .align(Alignment.CenterStart),
-                    quantity = uiState.clockOutQuantity,
-                    selectedStatus = uiState.clockOutStatus,
-                    onQuantityChange = viewModel::onClockOutQuantityChange,
-                    onStatusSelected = viewModel::onClockOutStatusSelected,
-                    onDismiss = viewModel::dismissClockOutDialog,
-                    onConfirm = viewModel::onClockOutConfirm
                 )
             }
 
@@ -324,6 +319,10 @@ private fun WorkOrdersForm(
     onEmployeeCardClose: () -> Unit,
     onClockIn: () -> Unit,
     onClockOut: () -> Unit,
+    onClockOutQuantityChange: (String) -> Unit,
+    onClockOutStatusSelected: (ClockOutStatus) -> Unit,
+    onClockOutConfirm: () -> Unit,
+    onClockOutCancel: () -> Unit,
     validationMessage: String?,
     isValidationMessageVisible: Boolean
 ) {
@@ -424,6 +423,18 @@ private fun WorkOrdersForm(
                             )
                         }
                     }
+
+                    if (uiState.showClockOutForm) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        ClockOutForm(
+                            quantity = uiState.clockOutQuantity,
+                            selectedStatus = uiState.clockOutStatus,
+                            onQuantityChange = onClockOutQuantityChange,
+                            onStatusSelected = onClockOutStatusSelected,
+                            onConfirm = onClockOutConfirm,
+                            onCancel = onClockOutCancel
+                        )
+                    }
                 }
             }
         }
@@ -433,6 +444,167 @@ private fun WorkOrdersForm(
             isVisible = isValidationMessageVisible,
             modifier = Modifier.fillMaxSize()
         )
+    }
+}
+
+@Composable
+private fun ClockOutForm(
+    quantity: String,
+    selectedStatus: ClockOutStatus,
+    onQuantityChange: (String) -> Unit,
+    onStatusSelected: (ClockOutStatus) -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Clock Out Work Order",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = onCancel) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Dismiss clock out form",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = quantity,
+                onValueChange = { input -> onQuantityChange(input.filter(Char::isDigit)) },
+                label = { Text(text = "Quantity") },
+                placeholder = { Text(text = "0") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Status",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ClockOutStatusButton(
+                        modifier = Modifier.weight(1f),
+                        label = ClockOutStatus.COMPLETE.displayName,
+                        icon = Icons.Filled.CheckCircle,
+                        isSelected = selectedStatus == ClockOutStatus.COMPLETE,
+                        onClick = {
+                            onStatusSelected(ClockOutStatus.COMPLETE)
+                            if (quantity.isNotBlank()) {
+                                onConfirm()
+                            }
+                        }
+                    )
+                    ClockOutStatusButton(
+                        modifier = Modifier.weight(1f),
+                        label = ClockOutStatus.INCOMPLETE.displayName,
+                        icon = Icons.Filled.Cancel,
+                        isSelected = selectedStatus == ClockOutStatus.INCOMPLETE,
+                        onClick = {
+                            onStatusSelected(ClockOutStatus.INCOMPLETE)
+                            if (quantity.isNotBlank()) {
+                                onConfirm()
+                            }
+                        }
+                    )
+                }
+            }
+
+            Button(
+                onClick = onConfirm,
+                enabled = quantity.isNotBlank(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                )
+            ) {
+                Text(
+                    text = "Confirm clock out",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClockOutStatusButton(
+    modifier: Modifier = Modifier,
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Button(
+        modifier = modifier.height(64.dp),
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor,
+            disabledContentColor = contentColor
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+            )
+        }
     }
 }
 

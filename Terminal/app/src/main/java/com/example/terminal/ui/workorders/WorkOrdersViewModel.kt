@@ -33,7 +33,7 @@ data class WorkOrdersUiState(
     val activeField: WorkOrderInputField = WorkOrderInputField.EMPLOYEE,
     val isLoading: Boolean = false,
     val snackbarMessage: String? = null,
-    val showClockOutDialog: Boolean = false,
+    val showClockOutForm: Boolean = false,
     val isEmployeeValidated: Boolean = false,
     val employeeValidationError: String? = null,
     val userStatus: UserStatus? = null,
@@ -259,7 +259,7 @@ class WorkOrdersViewModel(
         cancelWorkOrderTimeout()
         _uiState.update {
             it.copy(
-                showClockOutDialog = true,
+                showClockOutForm = true,
                 activeField = WorkOrderInputField.CLOCK_OUT_QTY,
                 clockOutQuantity = "",
                 clockOutStatus = ClockOutStatus.COMPLETE
@@ -303,7 +303,7 @@ class WorkOrdersViewModel(
         setLoading(true)
         _uiState.update {
             it.copy(
-                showClockOutDialog = false,
+                showClockOutForm = false,
                 clockOutQuantity = "",
                 clockOutStatus = ClockOutStatus.COMPLETE,
                 activeField = nextActiveFieldAfterClockOut(it)
@@ -338,10 +338,10 @@ class WorkOrdersViewModel(
         }
     }
 
-    fun dismissClockOutDialog() {
+    fun hideClockOutForm() {
         _uiState.update {
             it.copy(
-                showClockOutDialog = false,
+                showClockOutForm = false,
                 clockOutQuantity = "",
                 clockOutStatus = ClockOutStatus.COMPLETE,
                 activeField = nextActiveFieldAfterClockOut(it)
@@ -452,7 +452,7 @@ class WorkOrdersViewModel(
                 isEmployeeValidated = false,
                 employeeValidationError = null,
                 userStatus = null,
-                showClockOutDialog = false,
+                showClockOutForm = false,
                 clockOutQuantity = "",
                 clockOutStatus = ClockOutStatus.COMPLETE,
                 activeField = WorkOrderInputField.EMPLOYEE
@@ -603,7 +603,7 @@ class WorkOrdersViewModel(
         workOrderTimeoutJob = viewModelScope.launch {
             delay(WORK_ORDER_TIMEOUT_MS)
             val shouldReset = _uiState.value.let { state ->
-                if (state.isLoading || state.showClockOutDialog) {
+                if (state.isLoading || state.showClockOutForm) {
                     false
                 } else if (!state.isEmployeeValidated) {
                     state.workOrderId.isNotBlank() ||

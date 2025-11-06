@@ -16,30 +16,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -62,14 +50,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.offset
 import com.example.terminal.data.local.UserPrefs
 import com.example.terminal.data.network.ApiClient
 import com.example.terminal.ui.theme.TerminalTheme
 import com.example.terminal.ui.workorders.WorkOrdersScreen
 import java.util.ArrayList
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 fun TerminalApp() {
@@ -83,9 +68,6 @@ fun TerminalApp() {
     val userPrefs = remember { UserPrefs.create(context) }
     val serverAddress by userPrefs.serverAddress.collectAsState(initial = ApiClient.DEFAULT_BASE_URL)
     val beepVolume by userPrefs.beepVolume.collectAsState(initial = 1f)
-    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
     LaunchedEffect(serverAddress) {
         ApiClient.updateBaseUrl(serverAddress)
     }
@@ -138,16 +120,6 @@ fun TerminalApp() {
                         )
                     }
                 }
-                IconButton(
-                    onClick = { showSettingsDialog = true },
-                    modifier = Modifier.offset(y = (-4).dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Configurar servidor",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -169,20 +141,6 @@ fun TerminalApp() {
             }
         }
 
-        if (showSettingsDialog) {
-            ServerSettingsDialog(
-                initialAddress = serverAddress,
-                initialVolume = beepVolume,
-                onDismiss = { showSettingsDialog = false },
-                onSave = { newAddress, newVolume ->
-                    showSettingsDialog = false
-                    coroutineScope.launch {
-                        userPrefs.saveServerAddress(newAddress)
-                        userPrefs.saveBeepVolume(newVolume)
-                    }
-                }
-            )
-        }
     }
 }
 
@@ -261,69 +219,6 @@ private fun ClockTabContent(
             }
         )
     }
-}
-
-@Composable
-private fun ServerSettingsDialog(
-    initialAddress: String,
-    initialVolume: Float,
-    onDismiss: () -> Unit,
-    onSave: (String, Float) -> Unit
-) {
-    val clampedInitialVolume = initialVolume
-        .takeIf { !it.isNaN() && !it.isInfinite() }
-        ?.coerceIn(0f, 1f)
-        ?: 1f
-    var address by rememberSaveable(initialAddress) { mutableStateOf(initialAddress) }
-    var volume by rememberSaveable(clampedInitialVolume) { mutableStateOf(clampedInitialVolume) }
-    val isValid = address.trim().isNotEmpty()
-    val volumePercentage = (volume * 100).roundToInt()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = "Server settings") },
-        text = {
-            Column {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = "Configure the server address used for requests.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    OutlinedTextField(
-                        value = address,
-                        onValueChange = { address = it },
-                        label = { Text(text = "Server address") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Beep volume: $volumePercentage%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Slider(
-                            value = volume,
-                            onValueChange = { volume = it },
-                            valueRange = 0f..1f
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(address.trim(), volume) },
-                enabled = isValid
-            ) {
-                Text(text = "Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = "Cancel")
-            }
-        }
-    )
 }
 
 @Composable
