@@ -69,7 +69,6 @@ import com.example.terminal.ui.theme.TerminalTheme
 import com.example.terminal.ui.workorders.WorkOrdersScreen
 import java.util.ArrayList
 import kotlinx.coroutines.launch
-import kotlin.math.isFinite
 import kotlin.math.roundToInt
 
 @Composable
@@ -272,7 +271,7 @@ private fun ServerSettingsDialog(
     onSave: (String, Float) -> Unit
 ) {
     val clampedInitialVolume = initialVolume
-        .takeIf { it.isFinite() }
+        .takeIf { !it.isNaN() && !it.isInfinite() }
         ?.coerceIn(0f, 1f)
         ?: 1f
     var address by rememberSaveable(initialAddress) { mutableStateOf(initialAddress) }
