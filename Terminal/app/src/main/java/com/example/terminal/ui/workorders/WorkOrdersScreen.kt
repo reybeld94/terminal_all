@@ -343,10 +343,37 @@ private fun WorkOrdersForm(
             .fillMaxHeight()
             .padding(top = 24.dp, bottom = 16.dp)
     ) {
+        val shouldShowValidationMessage = isValidationMessageVisible && !validationMessage.isNullOrBlank()
+
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            AnimatedVisibility(
+                visible = shouldShowValidationMessage,
+                enter = fadeIn(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
+                    scaleIn(
+                        initialScale = 0.95f,
+                        animationSpec = tween(ValidationMessageAnimationDurationMillis)
+                    ),
+                exit = fadeOut(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
+                    scaleOut(
+                        targetScale = 0.95f,
+                        animationSpec = tween(ValidationMessageAnimationDurationMillis)
+                    )
+            ) {
+                ValidationMessageBanner(
+                    message = validationMessage.orEmpty(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+            }
+
+            if (shouldShowValidationMessage) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             when {
                 shouldShowAssemblyAwaitingStep -> {
                     AssemblyAwaitingEmployeeStep(
@@ -440,11 +467,6 @@ private fun WorkOrdersForm(
             }
         }
 
-        ValidationMessageOverlay(
-            message = validationMessage,
-            isVisible = isValidationMessageVisible,
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }
 
@@ -793,54 +815,29 @@ private fun ValidatedEmployeeContent(
 }
 
 @Composable
-private fun ValidationMessageOverlay(
-    message: String?,
-    isVisible: Boolean,
+private fun ValidationMessageBanner(
+    message: String,
     modifier: Modifier = Modifier
 ) {
-    val shouldShow = isVisible && !message.isNullOrBlank()
-    AnimatedVisibility(
-        visible = shouldShow,
+    Card(
         modifier = modifier,
-        enter = fadeIn(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
-            scaleIn(
-                initialScale = 0.95f,
-                animationSpec = tween(ValidationMessageAnimationDurationMillis)
-            ),
-        exit = fadeOut(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
-            scaleOut(
-                targetScale = 0.95f,
-                animationSpec = tween(ValidationMessageAnimationDurationMillis)
-            )
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.75f))
-                .padding(horizontal = 32.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(0.85f),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-            ) {
-                Text(
-                    text = message!!,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            ),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
