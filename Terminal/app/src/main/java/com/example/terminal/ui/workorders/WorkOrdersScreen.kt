@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -348,83 +347,92 @@ private fun WorkOrdersForm(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-        when {
-            shouldShowAssemblyAwaitingStep -> {
-                AssemblyAwaitingEmployeeStep(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    uiState = uiState,
-                    onEmployeeClick = onEmployeeClick
-                )
-            }
-            !uiState.isEmployeeValidated -> {
-                EmployeePromptStep(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    uiState = uiState,
-                    onEmployeeClick = onEmployeeClick
-                )
-            }
-            else -> {
-                ValidatedEmployeeContent(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    uiState = uiState,
-                    onWorkOrderClick = onWorkOrderClick,
-                    onEmployeeCardClose = onEmployeeCardClose
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(34.dp)
-                ) {
-                    Button(
-                        onClick = onClockIn,
-                        enabled = isClockInEnabled,
+            when {
+                shouldShowAssemblyAwaitingStep -> {
+                    AssemblyAwaitingEmployeeStep(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(60.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary,
-                            contentColor = MaterialTheme.colorScheme.onTertiary,
-                            disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
-                            disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
-                        )
-                    ) {
-                        Text(
-                            text = "Clock IN WO",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onTertiary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                            .fillMaxWidth()
+                            .weight(1f),
+                        uiState = uiState,
+                        onEmployeeClick = onEmployeeClick
+                    )
+                }
 
-                    Button(
-                        onClick = onClockOut,
-                        enabled = isClockOutEnabled,
+                !uiState.isEmployeeValidated -> {
+                    EmployeePromptStep(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(60.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
-                            disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.6f)
-                        )
+                            .fillMaxWidth()
+                            .weight(1f),
+                        uiState = uiState,
+                        onEmployeeClick = onEmployeeClick
+                    )
+                }
+
+                else -> {
+                    ValidatedEmployeeContent(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        uiState = uiState,
+                        onWorkOrderClick = onWorkOrderClick,
+                        onEmployeeCardClose = onEmployeeCardClose
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(34.dp)
                     ) {
-                        Text(
-                            text = "Clock OUT WO",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onError,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Button(
+                            onClick = onClockIn,
+                            enabled = isClockInEnabled,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(60.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary,
+                                contentColor = MaterialTheme.colorScheme.onTertiary,
+                                disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f),
+                                disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = 0.6f)
+                            )
+                        ) {
+                            Text(
+                                text = "Clock IN WO",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onTertiary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Button(
+                            onClick = onClockOut,
+                            enabled = isClockOutEnabled,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(60.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                                disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
+                                disabledContentColor = MaterialTheme.colorScheme.onError.copy(alpha = 0.6f)
+                            )
+                        ) {
+                            Text(
+                                text = "Clock OUT WO",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onError,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
         }
+
+        ValidationMessageOverlay(
+            message = validationMessage,
+            isVisible = isValidationMessageVisible,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 
@@ -608,12 +616,6 @@ private fun ValidatedEmployeeContent(
                 )
             }
         }
-    }
-        ValidationMessageOverlay(
-            message = validationMessage,
-            isVisible = isValidationMessageVisible,
-            modifier = Modifier.matchParentSize()
-        )
     }
 }
 
