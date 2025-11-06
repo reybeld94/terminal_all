@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.terminal.data.local.UserPrefs
 import com.example.terminal.data.network.ClockOutStatus
+import com.example.terminal.data.repository.ActiveWorkOrder
 import com.example.terminal.data.repository.UserStatus
 import com.example.terminal.data.repository.WorkOrderDetails
 import com.example.terminal.data.repository.WorkOrdersRepository
@@ -207,11 +208,16 @@ class WorkOrdersViewModel(
         val workOrderId = workOrder.toInt()
 
         setLoading(true)
+        val scannedDetails = _uiState.value.scannedWorkOrder
+
         viewModelScope.launch {
             val result = repository.clockIn(workOrderId, userId)
             result.fold(
                 onSuccess = {
-                    val refreshed = refreshUserStatus(employee)
+                    val refreshed = refreshUserStatus(
+                        employee = employee,
+                        fallbackWorkOrder = scannedDetails
+                    )
                     if (refreshed) {
                         showMessage("Clock in recorded successfully")
                     } else {
@@ -556,15 +562,22 @@ class WorkOrdersViewModel(
         }
     }
 
-    private suspend fun refreshUserStatus(employee: String): Boolean {
+    private suspend fun refreshUserStatus(
+        employee: String,
+        fallbackWorkOrder: WorkOrderDetails? = null
+    ): Boolean {
         val result = repository.fetchUserStatus(employee)
         return result.fold(
             onSuccess = { status ->
                 _uiState.update { current ->
+                    val mergedStatus = mergeActiveWorkOrderDetails(
+                        status = status,
+                        details = fallbackWorkOrder ?: current.scannedWorkOrder
+                    )
                     current.copy(
                         isEmployeeValidated = true,
                         employeeValidationError = null,
-                        userStatus = status,
+                        userStatus = mergedStatus,
                         workOrderId = status.activeWorkOrder?.workOrderCollectionId?.toString()
                             ?: current.workOrderId,
                         activeField = if (status.activeWorkOrder == null) {
@@ -651,6 +664,38 @@ class WorkOrdersViewModel(
 
     private fun setLoading(loading: Boolean) {
         _uiState.update { it.copy(isLoading = loading) }
+    }
+
+    private fun mergeActiveWorkOrderDetails(
+        status: UserStatus,
+        details: WorkOrderDetails?
+    ): UserStatus {
+        val active = status.activeWorkOrder ?: return status
+        val workOrderDetails = details ?: return status
+        if (!matchesWorkOrder(workOrderDetails, active)) {
+            return status
+        }
+
+        return status.copy(
+            activeWorkOrder = active.copy(
+                partNumber = workOrderDetails.partNumber ?: active.partNumber,
+                operationCode = workOrderDetails.operationCode ?: active.operationCode,
+                operationName = workOrderDetails.operationName ?: active.operationName
+            )
+        )
+    }
+
+    private fun matchesWorkOrder(
+        details: WorkOrderDetails,
+        active: ActiveWorkOrder
+    ): Boolean {
+        val collectionMatches = active.workOrderCollectionId != null &&
+            active.workOrderCollectionId == details.workOrderAssemblyId
+        val numberMatches = !details.workOrderNumber.isNullOrBlank() &&
+            details.workOrderNumber == active.workOrderNumber
+        val assemblyMatches = !details.workOrderAssemblyNumber.isNullOrBlank() &&
+            details.workOrderAssemblyNumber == active.workOrderAssemblyNumber
+        return collectionMatches || numberMatches || assemblyMatches
     }
 
     companion object {
