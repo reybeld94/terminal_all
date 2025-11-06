@@ -373,7 +373,6 @@ class WorkOrdersViewModel(
             current.copy(activeField = nextField)
         }
         if (!isEmployeeValidated) {
-            showMessage("Assembly scanned. Please scan your user ID to continue.")
             startWorkOrderTimeout()
         } else {
             attemptAutoClockIn()
