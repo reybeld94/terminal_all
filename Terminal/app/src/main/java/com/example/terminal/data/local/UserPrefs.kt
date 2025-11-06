@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.example.terminal.data.network.ApiClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlin.math.isFinite
 
 private const val DATA_STORE_NAME = "user_prefs"
 private val LAST_EMPLOYEE_KEY = stringPreferencesKey("last_employee_id")
@@ -33,7 +34,11 @@ class UserPrefs private constructor(private val appContext: Context) {
 
     val beepVolume: Flow<Float>
         get() = appContext.dataStore.data.map { preferences ->
-            preferences[BEEP_VOLUME_KEY] ?: 1f
+            val storedVolume = preferences[BEEP_VOLUME_KEY]
+            storedVolume
+                ?.takeIf { it.isFinite() }
+                ?.coerceIn(0f, 1f)
+                ?: 1f
         }
 
     suspend fun saveLastEmployeeId(employeeId: String) {
@@ -50,7 +55,10 @@ class UserPrefs private constructor(private val appContext: Context) {
     }
 
     suspend fun saveBeepVolume(volume: Float) {
-        val clampedVolume = volume.coerceIn(0f, 1f)
+        val clampedVolume = volume
+            .takeIf { it.isFinite() }
+            ?.coerceIn(0f, 1f)
+            ?: 1f
         appContext.dataStore.edit { preferences ->
             preferences[BEEP_VOLUME_KEY] = clampedVolume
         }

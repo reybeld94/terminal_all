@@ -69,6 +69,7 @@ import com.example.terminal.ui.theme.TerminalTheme
 import com.example.terminal.ui.workorders.WorkOrdersScreen
 import java.util.ArrayList
 import kotlinx.coroutines.launch
+import kotlin.math.isFinite
 import kotlin.math.roundToInt
 
 @Composable
@@ -270,8 +271,12 @@ private fun ServerSettingsDialog(
     onDismiss: () -> Unit,
     onSave: (String, Float) -> Unit
 ) {
+    val clampedInitialVolume = initialVolume
+        .takeIf { it.isFinite() }
+        ?.coerceIn(0f, 1f)
+        ?: 1f
     var address by rememberSaveable(initialAddress) { mutableStateOf(initialAddress) }
-    var volume by rememberSaveable(initialVolume) { mutableStateOf(initialVolume) }
+    var volume by rememberSaveable(clampedInitialVolume) { mutableStateOf(clampedInitialVolume) }
     val isValid = address.trim().isNotEmpty()
     val volumePercentage = (volume * 100).roundToInt()
 
