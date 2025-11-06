@@ -703,7 +703,7 @@ private fun EmployeePromptStep(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         StepHeading(
-            title = "Please enter or scan your user ID",
+            title = "Please enter or scan your User ID or Assembly Number",
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(24.dp))
