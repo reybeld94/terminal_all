@@ -21,17 +21,25 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -49,6 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,6 +69,9 @@ import com.example.terminal.data.network.ApiClient
 import com.example.terminal.ui.theme.TerminalTheme
 import com.example.terminal.ui.workorders.WorkOrdersScreen
 import java.util.ArrayList
+import java.util.Locale
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Composable
 fun TerminalApp() {
@@ -71,8 +85,18 @@ fun TerminalApp() {
     val userPrefs = remember { UserPrefs.create(context) }
     val serverAddress by userPrefs.serverAddress.collectAsState(initial = ApiClient.DEFAULT_BASE_URL)
     val beepVolume by userPrefs.beepVolume.collectAsState(initial = 1f)
+    var isSettingsDialogVisible by rememberSaveable { mutableStateOf(false) }
+    var serverAddressInput by rememberSaveable(serverAddress) { mutableStateOf(serverAddress) }
+    var beepVolumeInput by rememberSaveable(beepVolume) { mutableStateOf(beepVolume) }
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(serverAddress) {
         ApiClient.updateBaseUrl(serverAddress)
+        serverAddressInput = serverAddress
+    }
+
+    LaunchedEffect(beepVolume) {
+        beepVolumeInput = beepVolume
     }
 
     Surface(
@@ -123,6 +147,20 @@ fun TerminalApp() {
                         )
                     }
                 }
+
+                IconButton(
+                    onClick = {
+                        serverAddressInput = serverAddress
+                        beepVolumeInput = beepVolume
+                        isSettingsDialogVisible = true
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Open settings",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             Box(modifier = Modifier.weight(1f)) {
@@ -141,6 +179,31 @@ fun TerminalApp() {
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+            }
+
+            if (isSettingsDialogVisible) {
+                SettingsDialog(
+                    serverAddress = serverAddressInput,
+                    beepVolume = beepVolumeInput,
+                    onServerAddressChange = { serverAddressInput = it },
+                    onBeepVolumeChange = { beepVolumeInput = it.coerceIn(0f, 1f) },
+                    onDismiss = {
+                        serverAddressInput = serverAddress
+                        beepVolumeInput = beepVolume
+                        isSettingsDialogVisible = false
+                    },
+                    onConfirm = {
+                        val sanitizedAddress = serverAddressInput.trim()
+                        if (sanitizedAddress.isNotEmpty()) {
+                            serverAddressInput = sanitizedAddress
+                            coroutineScope.launch {
+                                userPrefs.saveServerAddress(sanitizedAddress)
+                                userPrefs.saveBeepVolume(beepVolumeInput.coerceIn(0f, 1f))
+                            }
+                            isSettingsDialogVisible = false
+                        }
+                    }
+                )
             }
         }
 
@@ -354,6 +417,84 @@ private fun IssueMaterialsTabContent(
 private enum class MaterialInputField {
     EMPLOYEE,
     MATERIAL
+}
+
+@Composable
+private fun SettingsDialog(
+    serverAddress: String,
+    beepVolume: Float,
+    onServerAddressChange: (String) -> Unit,
+    onBeepVolumeChange: (Float) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val trimmedServerAddress = serverAddress.trim()
+    val isSaveEnabled = trimmedServerAddress.isNotEmpty()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Settings",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Server address",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    OutlinedTextField(
+                        value = serverAddress,
+                        onValueChange = onServerAddressChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        placeholder = { Text(text = ApiClient.DEFAULT_BASE_URL) }
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Beep volume",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Slider(
+                        value = beepVolume.coerceIn(0f, 1f),
+                        onValueChange = onBeepVolumeChange,
+                        valueRange = 0f..1f,
+                        steps = 9
+                    )
+                    Text(
+                        text = String.format(Locale.getDefault(), "%d%%", (beepVolume * 100).roundToInt()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = isSaveEnabled
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
