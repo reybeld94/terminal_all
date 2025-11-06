@@ -1,5 +1,11 @@
 package com.example.terminal.ui.workorders
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -37,8 +44,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,6 +100,8 @@ import java.util.Locale
 private val AutoScanRapidKeyInterval: Duration = Duration.ofMillis(40)
 private const val AutoScanIdleDelayMillis: Long = 120
 private const val AutoScanMinRapidKeys: Int = 4
+private const val ValidationMessageVisibleDurationMillis: Long = 3_000
+private const val ValidationMessageAnimationDurationMillis: Int = 250
 
 @Composable
 fun WorkOrdersScreen(
@@ -103,7 +110,6 @@ fun WorkOrdersScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
     var barcodeBuffer by remember { mutableStateOf("") }
@@ -111,12 +117,24 @@ fun WorkOrdersScreen(
     var autoScanJob by remember { mutableStateOf<Job?>(null) }
     var autoScanDetected by remember { mutableStateOf(false) }
     var rapidKeyCount by remember { mutableStateOf(0) }
+    var validationMessage by remember { mutableStateOf<String?>(null) }
+    var isValidationMessageVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.snackbarMessage) {
         val message = uiState.snackbarMessage
         if (!message.isNullOrBlank()) {
-            snackbarHostState.showSnackbar(message)
+            validationMessage = message
+            isValidationMessageVisible = true
+            delay(ValidationMessageVisibleDurationMillis)
+            isValidationMessageVisible = false
+            delay(ValidationMessageAnimationDurationMillis.toLong())
+            if (validationMessage == message) {
+                validationMessage = null
+            }
             viewModel.dismissSnackbar()
+        } else if (message == null) {
+            isValidationMessageVisible = false
+            validationMessage = null
         }
     }
 
@@ -130,9 +148,7 @@ fun WorkOrdersScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -262,7 +278,9 @@ fun WorkOrdersScreen(
                     onWorkOrderClick = viewModel::onWorkOrderFieldSelected,
                     onEmployeeCardClose = viewModel::onEmployeeCardDismissed,
                     onClockIn = viewModel::onClockIn,
-                    onClockOut = viewModel::onClockOutClick
+                    onClockOut = viewModel::onClockOutClick,
+                    validationMessage = validationMessage,
+                    isValidationMessageVisible = isValidationMessageVisible
                 )
 
                 WorkOrdersKeypad(
@@ -306,7 +324,9 @@ private fun WorkOrdersForm(
     onWorkOrderClick: () -> Unit,
     onEmployeeCardClose: () -> Unit,
     onClockIn: () -> Unit,
-    onClockOut: () -> Unit
+    onClockOut: () -> Unit,
+    validationMessage: String?,
+    isValidationMessageVisible: Boolean
 ) {
     val hasActiveWorkOrder = uiState.userStatus?.activeWorkOrder != null
     val isClockInEnabled = uiState.isEmployeeValidated &&
@@ -319,12 +339,15 @@ private fun WorkOrdersForm(
         uiState.scannedWorkOrder != null ||
             (uiState.isAssemblyLoading && uiState.workOrderId.isNotBlank())
         )
-    Column(
+    Box(
         modifier = modifier
             .fillMaxHeight()
-            .padding(top = 24.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(top = 24.dp, bottom = 16.dp)
     ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         when {
             shouldShowAssemblyAwaitingStep -> {
                 AssemblyAwaitingEmployeeStep(
@@ -582,6 +605,64 @@ private fun ValidatedEmployeeContent(
                     color = TerminalHelperText,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+        ValidationMessageOverlay(
+            message = validationMessage,
+            isVisible = isValidationMessageVisible,
+            modifier = Modifier.matchParentSize()
+        )
+    }
+}
+
+@Composable
+private fun ValidationMessageOverlay(
+    message: String?,
+    isVisible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val shouldShow = isVisible && !message.isNullOrBlank()
+    AnimatedVisibility(
+        visible = shouldShow,
+        modifier = modifier,
+        enter = fadeIn(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
+            scaleIn(
+                initialScale = 0.95f,
+                animationSpec = tween(ValidationMessageAnimationDurationMillis)
+            ),
+        exit = fadeOut(animationSpec = tween(ValidationMessageAnimationDurationMillis)) +
+            scaleOut(
+                targetScale = 0.95f,
+                animationSpec = tween(ValidationMessageAnimationDurationMillis)
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.75f))
+                .padding(horizontal = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(0.85f),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
+            ) {
+                Text(
+                    text = message!!,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    textAlign = TextAlign.Center
                 )
             }
         }
